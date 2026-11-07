@@ -53,15 +53,38 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .err{color:var(--er);min-height:20px;margin-bottom:8px;font-size:14px}
 .lnk{border:0;background:none;padding:0;color:var(--ac);text-decoration:underline}
 @media print{.wrap,.login,.foot{display:none}dialog{position:static;border:0;width:100%}.noprint{display:none}}
+/* v3 look */
+body{background:radial-gradient(900px 320px at 50% -80px,color-mix(in srgb,var(--ac) 16%,transparent),transparent) no-repeat,var(--bg)}
+.top{background:linear-gradient(135deg,var(--ac),color-mix(in srgb,var(--ac) 50%,#7c3aed));color:var(--acx);border-radius:18px;padding:20px 22px;align-items:center;box-shadow:0 14px 30px -18px var(--ac)}
+.top h1{font-size:34px}.top .mu{color:inherit;opacity:.85}
+.top button{background:color-mix(in srgb,var(--acx) 16%,transparent);color:inherit;border-color:transparent}
+nav{border:0;gap:8px;padding-bottom:4px}
+nav button{border:1px solid var(--bd);border-radius:99px;background:var(--card);margin:0;padding:8px 18px;transition:.15s}
+nav button.on{background:var(--ac);color:var(--acx);border-color:var(--ac);box-shadow:0 6px 14px -8px var(--ac)}
+.card{border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 24px -18px rgba(0,0,0,.3)}
+.stats .card{position:relative;overflow:hidden;padding-left:20px}
+.stats .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c,var(--ac))}
+.stats .card:nth-child(1){--c:var(--ok)}.stats .card:nth-child(2){--c:var(--wn)}.stats .card:nth-child(3){--c:var(--er)}
+button,.btn{transition:.15s}.pri{box-shadow:0 6px 14px -8px var(--ac)}
+.who{position:relative;padding-left:46px;min-height:36px}
+.av{position:absolute;left:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 17px "Barlow Condensed",system-ui,sans-serif;background:color-mix(in srgb,var(--ac) 16%,transparent);color:var(--ac)}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--bd);border-radius:99px;padding:3px;gap:2px}
+.seg button{border:0;border-radius:99px;background:none;padding:6px 15px}.seg button.on{background:var(--ac);color:var(--acx)}
+.meter{height:8px;background:var(--bg);border-radius:9px;overflow:hidden;margin-top:4px}.meter i{display:block;height:100%;background:var(--ac);border-radius:9px}
+.tbl{width:100%;border-collapse:collapse}.tbl th,.tbl td{padding:9px 6px;border-bottom:1px solid var(--bd);text-align:right}
+.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{font-weight:600;color:var(--mu);font-size:13px}
+@media print{body.pr{--bg:#fff;--card:#fff;--tx:#111;--mu:#555;--bd:#ccc;--ac:#2b4bff;background:#fff;color:#111}body.pr .wrap{display:block}body.pr nav,body.pr .top,body.pr #licbar{display:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top"><div><h1 id="gym">My Gym</h1><div class="mu">Memberships, reminders and bills</div></div><button onclick="logout()">Log out</button></div>
+  <div id="licbar"></div>
   <nav>
     <button data-t="dash" onclick="go('dash')">Dashboard</button>
     <button data-t="members" onclick="go('members')">Members</button>
     <button data-t="inv" onclick="go('inv')">Bills</button>
+    <button data-t="rep" onclick="go('rep')">Reports</button>
     <button data-t="set" onclick="go('set')">Settings</button>
   </nav>
   <main id="main"></main>
@@ -77,8 +100,9 @@ const BRAND={name:'HGGymDesk',phone:'9156873641',year:2026};
 const DB_NAME='hggymdesk-b27e6-default-rtdb';
 const DB_HOSTS=['https://'+DB_NAME+'.firebaseio.com','https://'+DB_NAME+'.europe-west1.firebasedatabase.app','https://'+DB_NAME+'.asia-southeast1.firebasedatabase.app'];
 let _base='';
-async function base(){if(_base)return _base;for(const h of DB_HOSTS){try{const r=await fetch(h+'/licences/ping.json',{cache:'no-store'});if(r.ok){_base=h;return h}}catch(e){}}throw new Error('db')}
+async function base(){if(_base)return _base;for(const h of DB_HOSTS){try{const r=await fetch(h+'/licences/ping.json',{cache:'no-store'});if(r.ok){_base=h;return h}}catch(e){}}throw new Error('database not found')}
 const MAX_DEVICES=2;
+const EXPIRY_ON=false; /* keys work with no end date. Set true to enforce yearly expires dates from Firebase */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PL={1:'1 month',3:'3 months',6:'6 months',12:'1 year'};
 let S={settings:{gym:'My Gym',phone:'',cc:'91',cur:'₹',rd:7,prices:{1:1500,3:4000,6:7000,12:12000}},members:[],invoices:[],seq:1};
@@ -107,7 +131,7 @@ function render(){
   if(tab=='members')renderList();
 }
 function mrow(m,full){
-  return `<div class="row"><div><b>${esc(m.name)}</b><div class="mu">${esc(m.phone)}, ${PL[m.plan]}, ends ${fmtD(m.end)}</div></div>
+  return `<div class="row"><div class="who"><span class="av">${esc((m.name.trim()[0]||'?').toUpperCase())}</span><b>${esc(m.name)}</b><div class="mu">${esc(m.phone)}, ${PL[m.plan]}, ends ${fmtD(m.end)}</div></div>
   <div class="act">${badge(m)}<a class="btn" target="_blank" rel="noopener" href="${wa(m.phone,msgC(m))}">Remind</a><button onclick="openForm('${m.id}')">Renew</button>${full?`<button onclick="del('${m.id}',this)">Delete</button>`:''}</div></div>`;
 }
 const V={
@@ -122,7 +146,7 @@ dash(){
    <div class="card"><div class="num">${ms.length-xp}</div><div class="mu">Active members</div></div>
    <div class="card"><div class="num">${ex}</div><div class="mu">Ending within ${S.settings.rd} days</div></div>
    <div class="card"><div class="num">${xp}</div><div class="mu">Expired</div></div>
-   <div class="card"><div class="num">${money(rev)}</div><div class="mu">Collected this month</div></div></div>
+   <div class="card" style="cursor:pointer" onclick="go('rep')"><div class="num">${money(rev)}</div><div class="mu">Collected this month, tap for reports</div></div></div>
    ${need.length?`<div class="alert"><span><b>${need.length} membership${need.length>1?'s':''} need${need.length>1?'':'s'} a renewal reminder.</b></span>${owner}</div>`:''}
    <div class="card"><h2>Renewals due</h2>${need.length?need.map(m=>mrow(m)).join(''):'<div class="empty">Nobody is due for renewal right now.</div>'}</div>`;
 },
@@ -148,6 +172,56 @@ set(){
   <div class="card"><h2>Backup</h2><p class="mu">Data is stored in this browser only. Copy the text below and keep it safe; paste it back to restore.</p>
   <textarea id="bk" rows="4">${bk}</textarea><div class="act" style="margin-top:8px"><button onclick="$('#bk').select();document.execCommand('copy')">Copy</button><button onclick="restore()">Restore from text</button></div></div>`;
 }};
+/* ===== Reports ===== */
+let rep={r:'m',m:today().slice(0,7)};
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ym=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+const ml=(end,n)=>{const[y,m]=end.split('-').map(Number);return Array.from({length:n},(_,i)=>ym(new Date(y,m-n+i,1)))};
+const mlabel=k=>MN[+k.slice(5)-1]+' '+k.slice(0,4);
+const short=v=>v>=1e6?+(v/1e6).toFixed(1)+'M':v>=1e3?+(v/1e3).toFixed(1)+'k':String(v);
+const sumT=l=>l.reduce((s,i)=>s+i.total,0);
+function repData(){
+  const cur=rep.r=='m'?[rep.m]:ml(today().slice(0,7),+rep.r),pv=ml(ml(cur[0],2)[0],cur.length);
+  const fi={};S.invoices.forEach(i=>{if(!fi[i.mid]||i.no<fi[i.mid])fi[i.mid]=i.no});
+  const sel=a=>S.invoices.filter(i=>a.includes(i.date.slice(0,7)));
+  const A=sel(cur),P=sel(pv);let labels,vals;
+  if(rep.r=='m'){const[y,m]=rep.m.split('-').map(Number),dn=new Date(y,m,0).getDate();labels=Array.from({length:dn},(_,i)=>i+1);vals=labels.map(d=>sumT(A.filter(i=>+i.date.slice(8)==d)))}
+  else{labels=cur.map(k=>MN[+k.slice(5)-1]);vals=cur.map(k=>sumT(A.filter(i=>i.date.startsWith(k))))}
+  return{cur,A,rev:sumT(A),prev:sumT(P),nw:A.filter(i=>fi[i.mid]==i.no).length,fi,labels,vals};
+}
+function chart(labels,vals,hi){
+  const W=640,H=220,pl=8,pb=26,pt=22,n=vals.length,mx=Math.max(...vals,1),bw=(W-pl*2)/n,g=Math.min(10,bw*.25);
+  let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Revenue chart" style="display:block"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="var(--bd)"/>`;
+  vals.forEach((v,i)=>{const h=(H-pb-pt)*v/mx,x=pl+i*bw+g/2,y=H-pb-h,cx=x+(bw-g)/2;
+    o+=`<rect x="${x}" y="${y}" width="${bw-g}" height="${v?Math.max(h,2):0}" rx="4" fill="var(--ac)" opacity="${hi<0||i==hi?1:.6}"/>`;
+    if(v&&n<=12)o+=`<text x="${cx}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--tx)">${short(v)}</text>`;
+    if(n<=12||i%5==0)o+=`<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--mu)">${labels[i]}</text>`});
+  return o+'</svg>';
+}
+const bars=(rows,tot)=>rows.map(([k,c,v])=>`<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(k)}</span><span class="mu">${c} bill${c==1?'':'s'}, <b style="color:var(--tx)">${money(v)}</b></span></div><div class="meter"><i style="width:${tot?Math.round(v/tot*100):0}%"></i></div></div>`).join('');
+const setR=r=>{rep.r=r;render()};
+function printRep(){document.body.classList.add('pr');window.print();setTimeout(()=>document.body.classList.remove('pr'),800)}
+V.rep=()=>{
+  const d=repData(),n=d.A.length,avg=n?Math.round(d.rev/n):0,pct=d.prev?Math.round((d.rev-d.prev)/d.prev*100):null,mo=rep.r=='m';
+  const title=mo?mlabel(rep.m):(rep.r=='6'?'Last 6 months':'Last 12 months')+' ('+mlabel(d.cur[0])+' to '+mlabel(d.cur[d.cur.length-1])+')';
+  const chg=pct===null?'':`<div style="margin-top:4px"><span style="color:var(--${pct>=0?'ok':'er'});font-weight:600">${pct>=0?'▲':'▼'} ${Math.abs(pct)}%</span> <span class="mu">vs previous ${mo?'month':'period'}</span></div>`;
+  const bi=d.vals.indexOf(Math.max(...d.vals)),best=n?`Best ${mo?'day':'month'}: ${mo?fmtD(rep.m+'-'+String(d.labels[bi]).padStart(2,'0')):mlabel(d.cur[bi])}, ${money(d.vals[bi])}`:'';
+  const hi=mo?(rep.m==today().slice(0,7)?+today().slice(8)-1:-1):d.vals.length-1;
+  const by=(arr,f)=>arr.map(k=>{const l=d.A.filter(i=>f(i)==k);return[PL[k]||k,l.length,sumT(l)]}).filter(r=>r[1]);
+  const msg=`${S.settings.gym}: revenue, ${title}\nRevenue ${money(d.rev)}\nBills ${n} (${d.nw} new, ${n-d.nw} renewals)\nAverage bill ${money(avg)}`;
+  const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length;return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td><b>${money(sumT(l))}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td></tr></table></div>`;
+  const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
+  const c='style="--c:var(--ac)"';
+  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<input type="month" style="width:auto" value="${rep.m}" max="${today().slice(0,7)}" onchange="if(this.value){rep.m=this.value;render()}">`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="printRep()">Print</button></div>
+  <h2 style="margin:4px 0 10px">${title}</h2>
+  <div class="stats"><div class="card" ${c}><div class="num">${money(d.rev)}</div><div class="mu">Revenue</div>${chg}</div>
+  <div class="card" ${c}><div class="num">${n}</div><div class="mu">Bills</div></div>
+  <div class="card" ${c}><div class="num">${money(avg)}</div><div class="mu">Average bill</div></div>
+  <div class="card" ${c}><div class="num">${d.nw} / ${n-d.nw}</div><div class="mu">New members / renewals</div></div></div>
+  <div class="card"><h2>${mo?'Revenue by day':'Revenue by month'}</h2>${n?chart(d.labels.map(String),d.vals,hi)+`<div class="mu" style="margin-top:6px">${best}</div>`:'<div class="empty">No bills in this period yet.</div>'}</div>
+  ${n?`<div class="g2" style="gap:0 14px"><div class="card"><h2>By plan</h2>${bars(by([1,3,6,12],i=>i.plan),d.rev)}</div><div class="card"><h2>By payment mode</h2>${bars(by(['Cash','UPI','Card'],i=>i.mode),d.rev)}</div></div>`:''}${tbl}${lst}`;
+};
+/* ===== end Reports ===== */
 function renderList(){
   const t=q.toLowerCase(),l=S.members.filter(m=>(flt=='all'||status(m)==flt)&&(m.name.toLowerCase().includes(t)||m.phone.includes(t))).sort((a,b)=>a.end<b.end?-1:1);
   $('#list').innerHTML=l.length?l.map(m=>mrow(m,1)).join(''):`<div class="empty">${S.members.length?'No members match.':'No members yet. Add your first member to start tracking renewals.'}</div>`;
@@ -203,40 +277,60 @@ function setAuth(a){try{localStorage.setItem(AK,JSON.stringify(a))}catch(e){}}
 const sess=()=>authed||(()=>{try{return sessionStorage.getItem('gd_in')==='1'}catch(e){return false}})();
 function setSess(v){authed=v;try{v?sessionStorage.setItem('gd_in','1'):sessionStorage.removeItem('gd_in')}catch(e){}}
 const LK='gymdesk_lic',DK='gymdesk_dev';let lic=null,_dev='',hbBusy=false;
-async function rt(p,opt){const r=await fetch((await base())+'/licences/'+p+'.json',{...opt,cache:'no-store'});if(!r.ok)throw new Error(r.status);return r.json()}
+async function rt(p,opt,q){const r=await fetch((await base())+'/licences/'+p+'.json'+(q||''),{...opt,cache:'no-store'});if(!r.ok)throw new Error('code '+r.status);return r.json()}
 function devId(){if(_dev)return _dev;try{_dev=localStorage.getItem(DK)||''}catch(e){}
   if(!_dev){_dev=b64(crypto.getRandomValues(new Uint8Array(9))).replace(/[^A-Za-z0-9]/g,'x');try{localStorage.setItem(DK,_dev)}catch(e){}}return _dev}
 function saveLic(){try{localStorage.setItem(LK,JSON.stringify(lic))}catch(e){}}
+const GRACE_DAYS=7,WARN_DAYS=14;let expLocked=false;
+function lt(){let t=Date.now(),m=0;try{m=+localStorage.getItem('gymdesk_seen')||0}catch(e){}
+  if(t<m-864e5)t=m;else try{localStorage.setItem('gymdesk_seen',String(Math.max(t,m)))}catch(e){}
+  return iso(new Date(t))}
+const vexp=()=>lic&&lic.exp&&!isNaN(pd(lic.exp))?lic.exp:'';
 async function verify(){
-  try{const L=await rt(lic.h);
-    if(!L||!L.active||!(L.devices&&L.devices[devId()]))return 'revoked';
-    lic.ok=Date.now();saveLic();return 'ok'}
-  catch(x){return Date.now()-(lic.ok||0)<72*36e5?'offline':'locked'}
+  let L;
+  try{L=await rt(lic.h)}
+  catch(x){
+    if(Date.now()-(lic.ok||0)>=72*36e5)return 'locked';
+    return lic.exp&&diff(lic.exp,lt())<-GRACE_DAYS?'expired':'offline'}
+  if(!L||!L.active||!(L.devices&&L.devices[devId()]))return 'revoked';
+  lic.ok=Date.now();lic.exp=EXPIRY_ON?(L.expires||''):'';saveLic();
+  return lic.exp&&diff(lic.exp,lt())<-GRACE_DAYS?'expired':'ok';
 }
-function lockOut(msg,drop){try{$('#dlg').close()}catch(e){}if(drop){lic=null;try{localStorage.removeItem(LK)}catch(e){}}showLicence(msg)}
+const renewUrl=()=>wa(BRAND.phone,`Hi, I’d like to renew my ${BRAND.name} licence for ${S.settings.gym}.`);
+function lockOut(msg,drop,extra){try{$('#dlg').close()}catch(e){}if(drop){lic=null;try{localStorage.removeItem(LK)}catch(e){}}showLicence(msg,extra)}
+function expiredLock(){expLocked=true;lockOut(`Your licence ended on ${fmtD(vexp()||lt())}. Renew it to keep using the app. Your members and bills are still saved on this device and will be back after you renew.`,0,`<p><a class="btn pri" target="_blank" rel="noopener" href="${renewUrl()}">Renew on WhatsApp</a> <button onclick="boot()">I’ve renewed, check again</button></p>`)}
+function licBar(){
+  const b=$('#licbar'),e=vexp(),d=e?diff(e,lt()):null;
+  if(b)b.innerHTML=(d===null||d>WARN_DAYS)?'':`<div class="alert"><span><b>${d<0?`Your licence ended on ${fmtD(e)}. The app will lock in ${GRACE_DAYS+d} day${GRACE_DAYS+d==1?'':'s'} unless you renew.`:d==0?`Your licence ends today (${fmtD(e)}).`:`Your licence ends on ${fmtD(e)} (${d} day${d==1?'':'s'} left).`}</b></span><a class="btn pri" target="_blank" rel="noopener" href="${renewUrl()}">Renew on WhatsApp</a></div>`;
+  foot();
+}
 async function hb(){
   if(hbBusy||!lic||document.hidden)return;hbBusy=true;const s=await verify();hbBusy=false;
   if(s=='revoked')lockOut('This licence is now in use on another device, or it was cancelled. Enter your key to use it here.',1);
   else if(s=='locked')lockOut('Connect to the internet to confirm your licence.');
+  else if(s=='expired')expiredLock();
+  else if(s=='ok'&&expLocked)boot();
+  else licBar();
 }
 setInterval(hb,60000);document.addEventListener('visibilitychange',hb);
 async function sha(s){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',enc(s)))].map(b=>b.toString(16).padStart(2,'0')).join('')}
-function foot(){$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only. <button class="lnk" onclick="showTerms()">Licence terms</button>`}
+function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button>`}
 async function boot(){
-  foot();
+  expLocked=false;foot();
   try{lic=lic||JSON.parse(localStorage.getItem(LK))}catch(e){}
   if(!lic||!lic.h){lic=null;showLicence();return}
   const st=await verify();
   if(st=='revoked'){lockOut('This licence is now in use on another device, or it was cancelled. Enter your key to use it here.',1);return}
   if(st=='locked'){lockOut('Connect to the internet to confirm your licence.');return}
+  if(st=='expired'){expiredLock();return}
   getAuth()&&sess()?enter():showLogin();
 }
-function showLicence(msg){
+function showLicence(msg,extra){
   const L=$('#login');document.querySelector('.wrap').hidden=true;L.hidden=false;
   L.innerHTML=`<h1>Activate ${esc(BRAND.name)}</h1><p class="mu">Enter the licence key you received from ${esc(BRAND.name)}.</p>
   <div class="card"><label>Licence key<input id="k_k" placeholder="GYM-XXXX-XXXX-XXXX" autocapitalize="characters" onkeydown="if(event.key==='Enter')doLicence()"></label><div id="k_e" class="err"></div><button class="pri" onclick="doLicence()">Activate</button></div>
   <p class="mu">No key? Contact ${esc(BRAND.name)}, ${esc(BRAND.phone)}.</p>`;
-  $('#k_k').focus();if(msg)$('#k_e').textContent=msg;
+  $('#k_k').focus();if(msg)$('#k_e').textContent=msg;if(extra)L.insertAdjacentHTML('beforeend',extra);
 }
 async function doLicence(){
   const k=$('#k_k').value.toUpperCase().replace(/\s/g,''),e=$('#k_e');
@@ -246,9 +340,10 @@ async function doLicence(){
     if(!L||!L.active){e.textContent='That key isn’t valid or has been cancelled.';return}
     const dev=devId(),now=Date.now(),d={...(L.devices||{})};d[dev]=now;
     const ids=Object.keys(d).sort((a,b)=>d[a]-d[b]);while(ids.length>MAX_DEVICES)delete d[ids.shift()];
-    await rt(h+'/devices',{method:'PUT',body:JSON.stringify(d)});
+    const body=JSON.stringify(d);
+    try{await rt(h+'/devices',{method:'PUT',body})}catch(x){if(!(x instanceof TypeError))throw x;await rt(h+'/devices',{method:'POST',body},'?x-http-method-override=PUT')}
     lic={h,ok:now};saveLic();boot();
-  }catch(x){e.textContent='Couldn’t reach the licence server. Check your internet and try again.'}
+  }catch(x){e.textContent='Couldn’t reach the licence server ('+((x&&x.message)||'network')+'). Check your internet and try again.'}
 }
 function showTerms(){
   $('#dlg').innerHTML=`<h2>Licence terms</h2><p>This software is licensed to you, not sold. © ${BRAND.year} ${esc(BRAND.name)}.</p>
@@ -256,7 +351,7 @@ function showTerms(){
   <p class="mu">Questions: ${esc(BRAND.phone)}</p><div class="act"><button class="pri" onclick="$('#dlg').close()">Close</button></div>`;
   $('#dlg').showModal();
 }
-function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render()}
+function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render();licBar()}
 function logout(){setSess(false);tab='dash';boot()}
 function showLogin(){
   const a=getAuth(),L=$('#login');document.querySelector('.wrap').hidden=true;L.hidden=false;
