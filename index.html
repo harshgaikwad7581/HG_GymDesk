@@ -195,7 +195,7 @@ inv(){
 set(){
   const s=S.settings,bk=esc(JSON.stringify(S));
   return `<div class="card"><h2>Gym details</h2><div class="g2">
-  <label>Gym name<input value="${esc(s.gym)}" onchange="S.settings.gym=this.value;save();render()"></label>
+  <label>Gym name<input value="${esc(s.gym)}" onchange="S.settings.gym=this.value;save();render();gymAuth()"></label>
   <label>Owner WhatsApp number<input inputmode="tel" value="${esc(s.phone)}" onchange="S.settings.phone=this.value;save()"></label>
   <label>Country code<input value="${esc(s.cc)}" onchange="S.settings.cc=this.value.replace(/\\D/g,'');save()"></label>
   <label>Currency symbol<input value="${esc(s.cur)}" onchange="S.settings.cur=this.value;save()"></label>
@@ -296,7 +296,7 @@ async function cloudCheck(){
   try{const meta=await rr(cb()+'/meta'),st=sy();
     if(meta&&meta.t>(st.t||0)){if(st.pending&&(S.members.length||S.invoices.length)){if(!syncConflict){syncConflict=true;render()}}else await cloudDown(meta)}
     else if(st.pending)await autoUp();
-    const a=await rr(cb()+'/auth'),l=getAuth();if(a&&l&&a.hash&&a.hash!==l.hash)setAuth(a);
+    const a=await rr(cb()+'/auth'),l=getAuth();if(a&&l&&a.hash&&(a.hash!==l.hash||a.gym!==l.gym))setAuth(a);
   }catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudCheck()});setInterval(cloudCheck,300000);
@@ -467,13 +467,13 @@ function showTerms(){
   <p class="mu">Questions: ${esc(BRAND.phone)}</p><div class="act"><button class="pri" onclick="$('#dlg').close()">Close</button></div>`;
   $('#dlg').showModal();
 }
-function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render();licBar();cloudCheck();scheduleRenewals()}
+function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render();licBar();cloudCheck();scheduleRenewals();syncGym()}
 function logout(){setSess(false);tab='dash';boot()}
 function showLogin(){
   const a=getAuth(),L=$('#login');document.querySelector('.wrap').hidden=true;L.hidden=false;
-  L.innerHTML=a?`<h1>${esc(S.settings.gym)}</h1><p class="mu">Log in to manage memberships and bills.</p>
+  L.innerHTML=a?`<h1>${esc((a&&a.gym)||S.settings.gym)}</h1><p class="mu">Log in to manage memberships and bills.</p>
   <div class="card"><label>Username<input id="l_u" autocomplete="username"></label><label>Password<input id="l_p" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></label><div id="l_e" class="err"></div><button class="pri" onclick="doLogin()">Log in</button></div>
-  <p class="mu">Forgot your password? <button class="lnk" onclick="forgot(this)">Reset the app</button></p>`
+  <p class="mu">Forgot your password? <button class="lnk" onclick="forgot(this)">Reset your login</button></p>`
   :`<h1>Welcome to ${esc(BRAND.name)}</h1><p class="mu">Create the owner login for this device. Only people with this password can open the app.</p>
   <div class="card"><label>Gym name<input id="l_g" value="${esc(S.settings.gym==='My Gym'?'':S.settings.gym)}"></label><label>Username<input id="l_u" autocomplete="username"></label><label>Password (6+ characters)<input id="l_p" type="password" autocomplete="new-password"></label><label>Confirm password<input id="l_c" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetup()"></label><div id="l_e" class="err"></div><button class="pri" onclick="doSetup()">Create login</button></div>`;
   ($('#l_g')||$('#l_u')).focus();
@@ -483,7 +483,7 @@ async function doSetup(){
   if(!u){e.textContent='Choose a username.';return}
   if(p.length<6){e.textContent='Use a password with at least 6 characters.';return}
   if(p!==c){e.textContent='The two passwords don’t match.';return}
-  try{const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:u,salt,hash:await hash(p,salt)});
+  try{const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:u,salt,hash:await hash(p,salt),gym:g||S.settings.gym});
   if(g)S.settings.gym=g;save();setSess(true);enter()}catch(x){e.textContent='This browser can’t create a secure login. Try Chrome or Safari.'}
 }
 async function doLogin(){
@@ -496,10 +496,39 @@ async function changePw(){
   const a=getAuth(),m=$('#pw_m'),n=$('#pw_n').value;
   try{if(n.length<6){m.textContent='New password needs 6+ characters.';return}
   if(await hash($('#pw_o').value,a.salt)!==a.hash){m.textContent='Current password is wrong.';return}
-  const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:a.user,salt,hash:await hash(n,salt)});
+  const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:a.user,salt,hash:await hash(n,salt),gym:a.gym});
   $('#pw_o').value='';$('#pw_n').value='';cloudAuthUp();m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
 }
-function forgot(b){if(b.dataset.c){try{localStorage.removeItem('gymdesk');localStorage.removeItem(AK);sessionStorage.removeItem('gd_in')}catch(e){}location.reload()}else{b.dataset.c=1;b.textContent='This erases all members and bills. Click again to confirm'}}
+function gymAuth(){const a=getAuth();if(a){a.gym=S.settings.gym;setAuth(a);cloudAuthUp()}}
+function syncGym(){const a=getAuth();if(a&&S.settings.gym&&S.settings.gym!=='My Gym'&&a.gym!==S.settings.gym){a.gym=S.settings.gym;setAuth(a);cloudAuthUp()}}
+function showReset(){
+  const L=$('#login'),a=getAuth()||{};
+  L.innerHTML=`<h1>Reset your login</h1><p class="mu">Enter your licence key and choose a new gym name, username and password. Your members and bills are kept.</p>
+  <div class="card"><label>Licence key<input id="r_k" placeholder="GYM-XXXX-XXXX-XXXX" autocapitalize="characters"></label>
+  <label>Gym name<input id="r_g" value="${esc(a.gym||(S.settings.gym==='My Gym'?'':S.settings.gym))}"></label>
+  <label>New username<input id="r_u" autocomplete="username"></label>
+  <label>New password (6+ characters)<input id="r_p" type="password" autocomplete="new-password"></label>
+  <label>Confirm new password<input id="r_c" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReset()"></label>
+  <div id="r_e" class="err"></div><div class="act"><button class="pri" onclick="doReset()">Reset login</button><button onclick="showLogin()">Back</button></div></div>`;
+  $('#r_k').focus();
+}
+async function doReset(){
+  const e=$('#r_e'),k=$('#r_k').value.toUpperCase().replace(/\s/g,''),g=$('#r_g').value.trim(),u=$('#r_u').value.trim(),p=$('#r_p').value,c=$('#r_c').value;
+  if(!k){e.textContent='Enter your licence key.';return}
+  if(!u){e.textContent='Choose a username.';return}
+  if(p.length<6){e.textContent='Use a password with at least 6 characters.';return}
+  if(p!==c){e.textContent='The two passwords don’t match.';return}
+  e.textContent='Checking…';
+  try{
+    if(await sha(k)!==lic.h){e.textContent='That licence key doesn’t match this gym.';return}
+    try{const meta=await rr(cb()+'/meta');if(meta&&meta.t>(sy().t||0)&&!(S.members.length||S.invoices.length))await cloudDown(meta)}catch(x){}
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16)));
+    if(g)S.settings.gym=g;
+    setAuth({user:u,salt,hash:await hash(p,salt),gym:S.settings.gym});
+    save();await cloudAuthUp();setSess(true);enter();
+  }catch(x){e.textContent='Couldn’t reset the login ('+((x&&x.message)||'error')+'). Check your internet and try again.'}
+}
+function forgot(b){if(lic){showReset();return}if(b.dataset.c){try{localStorage.removeItem('gymdesk');localStorage.removeItem(AK);sessionStorage.removeItem('gd_in')}catch(e){}location.reload()}else{b.dataset.c=1;b.textContent='This erases all members and bills. Click again to confirm'}}
 load();boot();
 </script>
 </body>
