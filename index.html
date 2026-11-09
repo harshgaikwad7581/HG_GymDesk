@@ -3,12 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2b4bff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1013" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HGGymDesk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>HGGymDesk: Memberships &amp; Billing</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
-:root{--bg:#eef0ee;--card:#fff;--tx:#101418;--mu:#5d6670;--bd:#dde1de;--ac:#2b4bff;--acx:#fff;--ok:#0f7a55;--okb:#dff3ea;--wn:#9a4a00;--wnb:#ffecd0;--er:#b3202a;--erb:#fde4e4;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1013;--card:#161b20;--tx:#e9edf0;--mu:#93a0ab;--bd:#262d34;--ac:#8ea0ff;--acx:#0b1030;--ok:#55d3a3;--okb:#11382b;--wn:#ffbd66;--wnb:#3b290e;--er:#ff8f95;--erb:#401a1d;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0d1013;--card:#161b20;--tx:#e9edf0;--mu:#93a0ab;--bd:#262d34;--ac:#8ea0ff;--acx:#0b1030;--ok:#55d3a3;--okb:#11382b;--wn:#ffbd66;--wnb:#3b290e;--er:#ff8f95;--erb:#401a1d;color-scheme:dark}
+:root{--bg:#eef0ee;--card:#fff;--tx:#101418;--mu:#5d6670;--bd:#dde1de;--ac:#2b4bff;--acx:#fff;--ok:#0f7a55;--okb:#dff3ea;--wn:#9a4a00;--wnb:#ffecd0;--er:#b3202a;--erb:#fde4e4;--acs:rgba(43,75,255,.16);--ac2:#6a3df0;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1013;--card:#161b20;--tx:#e9edf0;--mu:#93a0ab;--bd:#262d34;--ac:#8ea0ff;--acx:#0b1030;--ok:#55d3a3;--okb:#11382b;--wn:#ffbd66;--wnb:#3b290e;--er:#ff8f95;--erb:#401a1d;--acs:rgba(142,160,255,.2);--ac2:#b08cff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1013;--card:#161b20;--tx:#e9edf0;--mu:#93a0ab;--bd:#262d34;--ac:#8ea0ff;--acx:#0b1030;--ok:#55d3a3;--okb:#11382b;--wn:#ffbd66;--wnb:#3b290e;--er:#ff8f95;--erb:#401a1d;--acs:rgba(142,160,255,.2);--ac2:#b08cff;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -53,11 +63,22 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .err{color:var(--er);min-height:20px;margin-bottom:8px;font-size:14px}
 .lnk{border:0;background:none;padding:0;color:var(--ac);text-decoration:underline}
 @media print{.wrap,.login,.foot{display:none}dialog{position:static;border:0;width:100%}.noprint{display:none}}
+/* compat */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+input,select,textarea{font-size:16px}
+textarea,input[type=text],input[type=number],input[type=password],input[type=email],input:not([type]){-webkit-appearance:none;appearance:none;border-radius:6px}
+button,.btn,nav button,.seg button{touch-action:manipulation}
+dialog:not([open]){display:none}
+dialog{max-height:92vh;max-height:92dvh}
+dialog.fb[open]{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;margin:0;box-shadow:0 0 0 100vmax rgba(0,0,0,.5)}
+.old{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;color:#111;padding:28px;z-index:99;font:16px/1.5 system-ui,sans-serif}
+body.native .webonly{display:none}
+body.native .wrap{padding-top:max(28px,env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
 /* v3 look */
-body{background:radial-gradient(900px 320px at 50% -80px,color-mix(in srgb,var(--ac) 16%,transparent),transparent) no-repeat,var(--bg)}
-.top{background:linear-gradient(135deg,var(--ac),color-mix(in srgb,var(--ac) 50%,#7c3aed));color:var(--acx);border-radius:18px;padding:20px 22px;align-items:center;box-shadow:0 14px 30px -18px var(--ac)}
+body{background:radial-gradient(900px 320px at 50% -80px,var(--acs),transparent) no-repeat,var(--bg)}
+.top{background:linear-gradient(135deg,var(--ac),var(--ac2));color:var(--acx);border-radius:18px;padding:20px 22px;align-items:center;box-shadow:0 14px 30px -18px var(--ac)}
 .top h1{font-size:34px}.top .mu{color:inherit;opacity:.85}
-.top button{background:color-mix(in srgb,var(--acx) 16%,transparent);color:inherit;border-color:transparent}
+.top button{background:transparent;color:inherit;border-color:currentColor}
 nav{border:0;gap:8px;padding-bottom:4px}
 nav button{border:1px solid var(--bd);border-radius:99px;background:var(--card);margin:0;padding:8px 18px;transition:.15s}
 nav button.on{background:var(--ac);color:var(--acx);border-color:var(--ac);box-shadow:0 6px 14px -8px var(--ac)}
@@ -67,18 +88,22 @@ nav button.on{background:var(--ac);color:var(--acx);border-color:var(--ac);box-s
 .stats .card:nth-child(1){--c:var(--ok)}.stats .card:nth-child(2){--c:var(--wn)}.stats .card:nth-child(3){--c:var(--er)}
 button,.btn{transition:.15s}.pri{box-shadow:0 6px 14px -8px var(--ac)}
 .who{position:relative;padding-left:46px;min-height:36px}
-.av{position:absolute;left:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 17px "Barlow Condensed",system-ui,sans-serif;background:color-mix(in srgb,var(--ac) 16%,transparent);color:var(--ac)}
+.av{position:absolute;left:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 17px "Barlow Condensed",system-ui,sans-serif;background:var(--acs);color:var(--ac)}
 .seg{display:inline-flex;background:var(--card);border:1px solid var(--bd);border-radius:99px;padding:3px;gap:2px}
 .seg button{border:0;border-radius:99px;background:none;padding:6px 15px}.seg button.on{background:var(--ac);color:var(--acx)}
 .meter{height:8px;background:var(--bg);border-radius:9px;overflow:hidden;margin-top:4px}.meter i{display:block;height:100%;background:var(--ac);border-radius:9px}
 .tbl{width:100%;border-collapse:collapse}.tbl th,.tbl td{padding:9px 6px;border-bottom:1px solid var(--bd);text-align:right}
 .tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{font-weight:600;color:var(--mu);font-size:13px}
+@media (max-width:560px){nav{flex-wrap:wrap}.num{font-size:32px}.top h1{font-size:28px}}
 @media print{body.pr{--bg:#fff;--card:#fff;--tx:#111;--mu:#555;--bd:#ccc;--ac:#2b4bff;background:#fff;color:#111}body.pr .wrap{display:block}body.pr nav,body.pr .top,body.pr #licbar{display:none}}
 </style>
 </head>
 <body>
+<div id="oldbrowser" class="old" hidden><h2>Your browser can’t run this app</h2><p>Please use the latest Chrome, Safari or Samsung Internet. Open the link with https and switch off private or incognito mode.</p></div>
+<script>window.__ok=false;setTimeout(function(){if(!window.__ok){document.getElementById('oldbrowser').hidden=false}},4000)</script>
 <div class="wrap">
   <div class="top"><div><h1 id="gym">My Gym</h1><div class="mu">Memberships, reminders and bills</div></div><button onclick="logout()">Log out</button></div>
+  <div id="warn"></div>
   <div id="licbar"></div>
   <nav>
     <button data-t="dash" onclick="go('dash')">Dashboard</button>
@@ -93,6 +118,9 @@ button,.btn{transition:.15s}.pri{box-shadow:0 6px 14px -8px var(--ac)}
 <div class="foot" id="foot"></div>
 <dialog id="dlg"></dialog>
 <script>
+window.__ok=!!(window.crypto&&crypto.subtle&&window.fetch&&window.Promise);
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());if(NATIVE)document.body.classList.add('native');
+(function(){const d=document.createElement('dialog');if(typeof d.showModal==='function')return;const e=document.getElementById('dlg');e.className='fb';e.showModal=function(){this.setAttribute('open','')};e.close=function(){this.removeAttribute('open')}})();
 const $=s=>document.querySelector(s);
 /* ===== YOUR DETAILS: change name and phone below before you sell ===== */
 const BRAND={name:'HGGymDesk',phone:'9156873641',year:2026};
@@ -108,7 +136,9 @@ const PL={1:'1 month',3:'3 months',6:'6 months',12:'1 year'};
 let S={settings:{gym:'My Gym',phone:'',cc:'91',cur:'₹',rd:7,prices:{1:1500,3:4000,6:7000,12:12000}},members:[],invoices:[],seq:1};
 let tab='dash',q='',flt='all';
 function load(){try{const r=localStorage.getItem('gymdesk');if(r){const o=JSON.parse(r);S={...S,...o,settings:{...S.settings,...o.settings,prices:{...S.settings.prices,...(o.settings||{}).prices}}}}}catch(e){}}
-function save(){try{localStorage.setItem('gymdesk',JSON.stringify(S))}catch(e){}}
+function saveLocal(){try{localStorage.setItem('gymdesk',JSON.stringify(S))}catch(e){}}
+let schedTm=null;
+function save(){saveLocal();if(cloudOn()){const st=sy();st.pending=true;sySave(st);cloudSoon()}if(NATIVE){clearTimeout(schedTm);schedTm=setTimeout(scheduleRenewals,5000)}}
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const pd=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
 const today=()=>iso(new Date());
@@ -127,6 +157,8 @@ function go(t){tab=t;render()}
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
   $('#gym').textContent=S.settings.gym||'My Gym';
+  $('#warn').innerHTML=storeOK()?'':'<div class="alert"><span><b>Your browser is not saving data.</b> Members and bills will be lost when you close this page. Leave private or incognito mode and allow site data for this page.</span></div>';
+  $('#warn').innerHTML+=conflictBar();
   $('#main').innerHTML=V[tab]();
   if(tab=='members')renderList();
 }
@@ -148,6 +180,7 @@ dash(){
    <div class="card"><div class="num">${xp}</div><div class="mu">Expired</div></div>
    <div class="card" style="cursor:pointer" onclick="go('rep')"><div class="num">${money(rev)}</div><div class="mu">Collected this month, tap for reports</div></div></div>
    ${need.length?`<div class="alert"><span><b>${need.length} membership${need.length>1?'s':''} need${need.length>1?'':'s'} a renewal reminder.</b></span>${owner}</div>`:''}
+   ${S.members.length&&(!S.lastBackup||diff(today(),S.lastBackup)>7)?`<div class="alert"><span><b>Back up your members and bills.</b> ${S.lastBackup?'Your last backup was '+diff(today(),S.lastBackup)+' days ago.':'You haven’t made a backup yet.'}</span><button onclick="go('set')">Back up now</button></div>`:''}
    <div class="card"><h2>Renewals due</h2>${need.length?need.map(m=>mrow(m)).join(''):'<div class="empty">Nobody is due for renewal right now.</div>'}</div>`;
 },
 members(){
@@ -169,8 +202,9 @@ set(){
   <label>Remind this many days before expiry<input type="number" min="0" value="${s.rd}" onchange="S.settings.rd=+this.value;save()"></label></div></div>
   <div class="card"><h2>Plan prices</h2><div class="g2">${[1,3,6,12].map(n=>`<label>${PL[n]}<input type="number" min="0" value="${s.prices[n]}" onchange="S.settings.prices[${n}]=+this.value;save()"></label>`).join('')}</div></div>
   <div class="card"><h2>Login</h2><div class="g2"><label>Current password<input id="pw_o" type="password" autocomplete="current-password"></label><label>New password (6+ characters)<input id="pw_n" type="password" autocomplete="new-password"></label></div><div class="act"><button onclick="changePw()">Change password</button><span id="pw_m" class="mu"></span></div></div>
+  ${cloudCard()}<div class="card"><h2>Using an iPhone?</h2><p class="mu">Open this page in Safari, tap Share, then Add to Home Screen, and always open the app from that icon. Safari can clear a website’s saved data after about a week of not using it, but apps on the home screen are not affected. Install first, then activate your key and create your login inside the home screen app.</p></div>
   <div class="card"><h2>Backup</h2><p class="mu">Data is stored in this browser only. Copy the text below and keep it safe; paste it back to restore.</p>
-  <textarea id="bk" rows="4">${bk}</textarea><div class="act" style="margin-top:8px"><button onclick="$('#bk').select();document.execCommand('copy')">Copy</button><button onclick="restore()">Restore from text</button></div></div>`;
+  <textarea id="bk" rows="4">${bk}</textarea><div class="act" style="margin-top:8px"><button onclick="copyBk(this)">Copy</button>${(navigator.share||NATIVE)?'<button onclick="shareBk()">Share</button>':''}<button onclick="restore()">Restore from text</button></div></div>`;
 }};
 /* ===== Reports ===== */
 let rep={r:'m',m:today().slice(0,7)};
@@ -190,17 +224,17 @@ function repData(){
   return{cur,A,rev:sumT(A),prev:sumT(P),nw:A.filter(i=>fi[i.mid]==i.no).length,fi,labels,vals};
 }
 function chart(labels,vals,hi){
-  const W=640,H=220,pl=8,pb=26,pt=22,n=vals.length,mx=Math.max(...vals,1),bw=(W-pl*2)/n,g=Math.min(10,bw*.25);
+  const W=640,H=260,pl=8,pb=40,pt=34,n=vals.length,mx=Math.max(...vals,1),bw=(W-pl*2)/n,g=Math.min(10,bw*.25);
   let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Revenue chart" style="display:block"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="var(--bd)"/>`;
   vals.forEach((v,i)=>{const h=(H-pb-pt)*v/mx,x=pl+i*bw+g/2,y=H-pb-h,cx=x+(bw-g)/2;
     o+=`<rect x="${x}" y="${y}" width="${bw-g}" height="${v?Math.max(h,2):0}" rx="4" fill="var(--ac)" opacity="${hi<0||i==hi?1:.6}"/>`;
-    if(v&&n<=12)o+=`<text x="${cx}" y="${y-5}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--tx)">${short(v)}</text>`;
-    if(n<=12||i%5==0)o+=`<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--mu)">${labels[i]}</text>`});
+    if(v&&n<=12)o+=`<text x="${cx}" y="${y-8}" text-anchor="middle" font-size="20" font-weight="600" fill="var(--tx)">${short(v)}</text>`;
+    if(n<=12||i%5==0)o+=`<text x="${cx}" y="${H-12}" text-anchor="middle" font-size="20" fill="var(--mu)">${labels[i]}</text>`});
   return o+'</svg>';
 }
 const bars=(rows,tot)=>rows.map(([k,c,v])=>`<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(k)}</span><span class="mu">${c} bill${c==1?'':'s'}, <b style="color:var(--tx)">${money(v)}</b></span></div><div class="meter"><i style="width:${tot?Math.round(v/tot*100):0}%"></i></div></div>`).join('');
 const setR=r=>{rep.r=r;render()};
-function printRep(){document.body.classList.add('pr');window.print();setTimeout(()=>document.body.classList.remove('pr'),800)}
+function printRep(){const done=()=>document.body.classList.remove('pr');document.body.classList.add('pr');window.addEventListener('afterprint',done,{once:true});setTimeout(done,120000);window.print()}
 V.rep=()=>{
   const d=repData(),n=d.A.length,avg=n?Math.round(d.rev/n):0,pct=d.prev?Math.round((d.rev-d.prev)/d.prev*100):null,mo=rep.r=='m';
   const title=mo?mlabel(rep.m):(rep.r=='6'?'Last 6 months':'Last 12 months')+' ('+mlabel(d.cur[0])+' to '+mlabel(d.cur[d.cur.length-1])+')';
@@ -212,7 +246,7 @@ V.rep=()=>{
   const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length;return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td><b>${money(sumT(l))}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td></tr></table></div>`;
   const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
   const c='style="--c:var(--ac)"';
-  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<input type="month" style="width:auto" value="${rep.m}" max="${today().slice(0,7)}" onchange="if(this.value){rep.m=this.value;render()}">`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="printRep()">Print</button></div>
+  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
   <h2 style="margin:4px 0 10px">${title}</h2>
   <div class="stats"><div class="card" ${c}><div class="num">${money(d.rev)}</div><div class="mu">Revenue</div>${chg}</div>
   <div class="card" ${c}><div class="num">${n}</div><div class="mu">Bills</div></div>
@@ -222,6 +256,87 @@ V.rep=()=>{
   ${n?`<div class="g2" style="gap:0 14px"><div class="card"><h2>By plan</h2>${bars(by([1,3,6,12],i=>i.plan),d.rev)}</div><div class="card"><h2>By payment mode</h2>${bars(by(['Cash','UPI','Card'],i=>i.mode),d.rev)}</div></div>`:''}${tbl}${lst}`;
 };
 /* ===== end Reports ===== */
+async function copyBk(b){
+  const t=$('#bk');let ok=false;
+  try{await navigator.clipboard.writeText(t.value);ok=true}catch(e){}
+  if(!ok){try{t.focus();t.setSelectionRange(0,t.value.length);ok=document.execCommand('copy')}catch(e){}}
+  if(ok){S.lastBackup=today();save()}
+  b.textContent=ok?'Copied':'Press and hold the text, then tap Copy';setTimeout(()=>{b.textContent='Copy'},3000);
+}
+async function shareBk(){try{const o={title:BRAND.name+' backup',text:$('#bk').value};if(NATIVE&&Capacitor.Plugins&&Capacitor.Plugins.Share)await Capacitor.Plugins.Share.share(o);else await navigator.share(o);S.lastBackup=today();save()}catch(e){}}
+/* ===== Cloud backup and sync (uses your licence key) ===== */
+const CLOUD_ON=true;let cloudTm=null,syncConflict=false;const SK='gymdesk_sync';
+function sy(){try{return JSON.parse(localStorage.getItem(SK))||{}}catch(e){return{}}}
+function sySave(o){try{localStorage.setItem(SK,JSON.stringify(o))}catch(e){}}
+const cloudAvail=()=>CLOUD_ON&&!!lic&&!!lic.h,cloudOn=()=>cloudAvail()&&sy().auto!==false,cb=()=>'backups/'+lic.h;
+async function rr(p){const r=await fetch((await base())+'/'+p+'.json',{cache:'no-store'});if(!r.ok)throw new Error('code '+r.status);return r.json()}
+async function rw(p,v){const b=JSON.stringify(v),u=(await base())+'/'+p+'.json',go=(m,q)=>fetch(u+(q||''),{method:m,body:b,cache:'no-store'});let r;
+  try{r=await go('PUT')}catch(x){if(!(x instanceof TypeError))throw x;r=await go('POST','?x-http-method-override=PUT')}
+  if(!r.ok)throw new Error('code '+r.status)}
+async function cloudAuthUp(){if(cloudAvail()&&getAuth()){try{await rw(cb()+'/auth',getAuth())}catch(e){}}}
+async function cloudAuthDown(){if(!cloudAvail()||getAuth())return;try{const a=await rr(cb()+'/auth');if(a&&a.hash&&a.salt&&a.user)setAuth(a)}catch(e){}}
+async function cloudUp(force){
+  const meta=await rr(cb()+'/meta'),st=sy();
+  if(!force&&meta&&meta.t>(st.t||0))return 'conflict';
+  const t=Date.now();
+  await rw(cb()+'/data',JSON.stringify(S));
+  await rw(cb()+'/meta',{t,d:devId(),m:S.members.length,b:S.invoices.length});
+  await cloudAuthUp();sySave({...st,t,pending:false});syncConflict=false;return 'ok';
+}
+async function cloudDown(meta){
+  const o=JSON.parse(await rr(cb()+'/data'));
+  if(!o||!Array.isArray(o.members)||!Array.isArray(o.invoices))throw new Error('bad data');
+  S={...S,...o,settings:{...S.settings,...o.settings,prices:{...S.settings.prices,...(o.settings||{}).prices}}};
+  saveLocal();sySave({...sy(),t:meta.t,pending:false});syncConflict=false;render();
+}
+function cloudSoon(){clearTimeout(cloudTm);cloudTm=setTimeout(autoUp,20000)}
+async function autoUp(){try{const r=await cloudUp(false);if(r=='conflict'){syncConflict=true;render()}}catch(e){}}
+async function cloudCheck(){
+  if(!cloudOn()||document.hidden)return;
+  try{const meta=await rr(cb()+'/meta'),st=sy();
+    if(meta&&meta.t>(st.t||0)){if(st.pending&&(S.members.length||S.invoices.length)){if(!syncConflict){syncConflict=true;render()}}else await cloudDown(meta)}
+    else if(st.pending)await autoUp();
+    const a=await rr(cb()+'/auth'),l=getAuth();if(a&&l&&a.hash&&a.hash!==l.hash)setAuth(a);
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloudCheck()});setInterval(cloudCheck,300000);
+function conflictBar(){return syncConflict?`<div class="alert"><span><b>Another device saved newer data.</b> Restore the latest from the cloud before making more changes, or yours may overwrite theirs.</span><button onclick="go('set')">Cloud settings</button></div>`:''}
+function cloudStatus(){const st=sy();return (st.t?'Last synced '+new Date(st.t).toLocaleString()+'.':'Not synced yet.')+(st.pending?' Changes waiting to upload.':'')+(syncConflict?' Another device has newer data.':'')}
+function clMsg(t){const e=$('#cl_s');if(e)e.textContent=t}
+function cloudAuto(v){sySave({...sy(),auto:v});if(v)cloudSoon()}
+async function cloudNow(b){b.textContent='Saving…';
+  try{const r=await cloudUp(false);if(r=='conflict'){syncConflict=true;render();return}clMsg(cloudStatus())}catch(e){clMsg('Couldn’t reach the cloud ('+(e.message||'network')+').')}
+  b.textContent='Save to cloud now'}
+async function cloudRestore(b){
+  if(!b.dataset.c){b.dataset.c=1;b.textContent='This replaces data on this device. Tap again';return}
+  try{const meta=await rr(cb()+'/meta');if(!meta){clMsg('There is no cloud copy yet.')}else await cloudDown(meta)}catch(e){clMsg('Couldn’t restore ('+(e.message||'network')+').')}
+  b.dataset.c='';b.textContent='Restore from cloud'}
+async function cloudOver(b){
+  if(!b.dataset.c){b.dataset.c=1;b.textContent='This replaces the cloud copy. Tap again';return}
+  try{await cloudUp(true);render()}catch(e){clMsg('Couldn’t save ('+(e.message||'network')+').')}}
+function cloudCard(){
+  if(!cloudAvail())return '';
+  return `<div class="card"><h2>Cloud backup</h2><p class="mu">Your members and bills are saved to the cloud under your licence key. On another phone or computer, enter the same key and log in, and the latest data comes with it. Use one device at a time, and wait for the data to load after switching devices.</p>
+  <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" style="width:auto;margin:0" ${sy().auto!==false?'checked':''} onchange="cloudAuto(this.checked)"> Save to the cloud automatically</label>
+  <div id="cl_s" class="mu" style="margin:8px 0">${cloudStatus()}</div>
+  <div class="act"><button class="pri" onclick="cloudNow(this)">Save to cloud now</button><button onclick="cloudRestore(this)">Restore from cloud</button>${syncConflict?'<button onclick="cloudOver(this)">Overwrite cloud with this device</button>':''}</div></div>
+  `}
+/* ===== Renewal alerts on the owner's phone (installed app only) ===== */
+async function scheduleRenewals(){
+  if(!NATIVE)return;const LN=Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications;if(!LN)return;
+  try{
+    let p=await LN.checkPermissions();if(p.display!=='granted'){p=await LN.requestPermissions();if(p.display!=='granted')return}
+    const pend=await LN.getPending();if(pend.notifications&&pend.notifications.length)await LN.cancel({notifications:pend.notifications});
+    const out=[],now=new Date(),rd=S.settings.rd;
+    for(let i=0;i<30;i++){
+      const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i,9,0,0);if(d<=now)continue;
+      const ds=iso(d),soon=S.members.filter(m=>m.end===addDays(ds,rd)).length,td=S.members.filter(m=>m.end===ds).length;
+      if(soon||td)out.push({id:i+1,title:BRAND.name,body:(soon?soon+' membership'+(soon>1?'s end':' ends')+' in '+rd+' days. ':'')+(td?td+' membership'+(td>1?'s end':' ends')+' today.':''),schedule:{at:d,allowWhileIdle:true}});
+    }
+    if(out.length)await LN.schedule({notifications:out});
+  }catch(e){}
+}
+function storeOK(){try{localStorage.setItem('gd_t','1');localStorage.removeItem('gd_t');return true}catch(e){return false}}
 function renderList(){
   const t=q.toLowerCase(),l=S.members.filter(m=>(flt=='all'||status(m)==flt)&&(m.name.toLowerCase().includes(t)||m.phone.includes(t))).sort((a,b)=>a.end<b.end?-1:1);
   $('#list').innerHTML=l.length?l.map(m=>mrow(m,1)).join(''):`<div class="empty">${S.members.length?'No members match.':'No members yet. Add your first member to start tracking renewals.'}</div>`;
@@ -265,7 +380,7 @@ function showInv(no){
   ${i.disc?`<tr><td>Discount</td><td>-${money(i.disc)}</td></tr>`:''}
   <tr><td><b>Total paid</b><br><span class="mu">by ${i.mode}</span></td><td><b>${money(i.total)}</b></td></tr></table>
   <div class="mu">Thank you for training with us.</div></div>
-  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="window.print()">Print</button><a class="btn" target="_blank" rel="noopener" href="${wa(i.phone,t)}">Send on WhatsApp</a><button onclick="$('#dlg').close()">Close</button></div>`;
+  <div class="act noprint" style="margin-top:14px"><button class="pri webonly" onclick="window.print()">Print</button><a class="btn" target="_blank" rel="noopener" href="${wa(i.phone,t)}">Send on WhatsApp</a><button onclick="$('#dlg').close()">Close</button></div>`;
   if(!$('#dlg').open)$('#dlg').showModal();
 }
 const AK='gymdesk_auth';let authed=false;
@@ -312,7 +427,7 @@ async function hb(){
   else if(s=='ok'&&expLocked)boot();
   else licBar();
 }
-setInterval(hb,60000);document.addEventListener('visibilitychange',hb);
+setInterval(hb,300000);document.addEventListener('visibilitychange',hb);
 async function sha(s){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',enc(s)))].map(b=>b.toString(16).padStart(2,'0')).join('')}
 function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button>`}
 async function boot(){
@@ -323,6 +438,7 @@ async function boot(){
   if(st=='revoked'){lockOut('This licence is now in use on another device, or it was cancelled. Enter your key to use it here.',1);return}
   if(st=='locked'){lockOut('Connect to the internet to confirm your licence.');return}
   if(st=='expired'){expiredLock();return}
+  if(!getAuth())await cloudAuthDown();
   getAuth()&&sess()?enter():showLogin();
 }
 function showLicence(msg,extra){
@@ -351,7 +467,7 @@ function showTerms(){
   <p class="mu">Questions: ${esc(BRAND.phone)}</p><div class="act"><button class="pri" onclick="$('#dlg').close()">Close</button></div>`;
   $('#dlg').showModal();
 }
-function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render();licBar()}
+function enter(){$('#login').hidden=true;document.querySelector('.wrap').hidden=false;render();licBar();cloudCheck();scheduleRenewals()}
 function logout(){setSess(false);tab='dash';boot()}
 function showLogin(){
   const a=getAuth(),L=$('#login');document.querySelector('.wrap').hidden=true;L.hidden=false;
@@ -381,7 +497,7 @@ async function changePw(){
   try{if(n.length<6){m.textContent='New password needs 6+ characters.';return}
   if(await hash($('#pw_o').value,a.salt)!==a.hash){m.textContent='Current password is wrong.';return}
   const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:a.user,salt,hash:await hash(n,salt)});
-  $('#pw_o').value='';$('#pw_n').value='';m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
+  $('#pw_o').value='';$('#pw_n').value='';cloudAuthUp();m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
 }
 function forgot(b){if(b.dataset.c){try{localStorage.removeItem('gymdesk');localStorage.removeItem(AK);sessionStorage.removeItem('gd_in')}catch(e){}location.reload()}else{b.dataset.c=1;b.textContent='This erases all members and bills. Click again to confirm'}}
 load();boot();
