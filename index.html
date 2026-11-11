@@ -247,7 +247,7 @@ V.rep=()=>{
   const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length;return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td><b>${money(sumT(l))}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td></tr></table></div>`;
   const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
   const c='style="--c:var(--ac)"';
-  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button><button class="webonly" onclick="printRep()">Print</button></div>
+  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="reportPdf(this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
   <h2 style="margin:4px 0 10px">${title}</h2>
   <div class="stats"><div class="card" ${c}><div class="num">${money(d.rev)}</div><div class="mu">Revenue</div>${chg}</div>
   <div class="card" ${c}><div class="num">${n}</div><div class="mu">Bills</div></div>
@@ -421,16 +421,20 @@ function toast(msg,ms){
   d.onclick=()=>d.remove();(document.querySelector('dialog[open]')||document.body).appendChild(d);setTimeout(()=>d.remove(),ms||15000)}
 const billTxt=i=>`${S.settings.gym}: Bill ${i.no} for ${i.name}. ${PL[i.plan]} membership, ${fmtD(i.start)} to ${fmtD(i.end)}. Total paid ${money(i.total)} (${i.mode}).`;
 function repTxt(){const a=repData(),n=a.A.length;return `${S.settings.gym}: revenue report. Revenue ${money(a.rev)}, ${n} bill${n==1?'':'s'} (${a.nw} new, ${n-a.nw} renewals), average bill ${money(n?Math.round(a.rev/n):0)}.`}
-async function pdfBtn(b,make,name,title,txt){
-  const t=b.textContent;b.textContent='Preparing…';
-  try{await sharePdf(make().done(),name,title);b.textContent=t}
+function savePdf(bytes,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=name;a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},15000);toast('PDF saved as '+name+'. Look in your Downloads folder.',6000)}
+const shareOK=()=>{try{return !NATIVE&&!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'a.pdf',{type:'application/pdf'})]}))}catch(e){return false}};
+async function pdfBtn(b,make,name,title,txt,mode){
+  mode=mode||(NATIVE?'share':'save');const t=b.textContent;b.textContent='Preparing…';
+  try{const bytes=make().done();if(mode=='save')savePdf(bytes,name);else await sharePdf(bytes,name,title);b.textContent=t}
   catch(e){b.textContent=t;const m=String((e&&e.message)||e||'error');let extra='';
     try{const C=window.Capacitor;if(NATIVE&&C&&C.PluginHeaders)extra=' Plugins in this app: '+C.PluginHeaders.map(h=>h.name).join(', ')+'.'}catch(x){}
     let sent=false;if(NATIVE&&txt){try{await nat('Share','share',{title:title,text:txt});sent=true}catch(x){}}
     toast((sent?'The PDF could not be saved, so a text copy was shared. ':'The PDF could not be made. ')+'Reason: '+m.slice(0,160)+'.'+extra,20000)}
 }
-function billPdf(no,b){const i=S.invoices.find(x=>x.no==no);return pdfBtn(b,()=>billDoc(i),'Bill-'+i.no+'.pdf',BRAND.name+' bill '+i.no,billTxt(i))}
-function reportPdf(b){return pdfBtn(b,reportDoc,'Report-'+(rep.r=='m'?rep.m:rep.r+'-months')+'.pdf',BRAND.name+' revenue report',repTxt())}
+function billPdf(no,b,mode){const i=S.invoices.find(x=>x.no==no);return pdfBtn(b,()=>billDoc(i),'Bill-'+i.no+'.pdf',BRAND.name+' bill '+i.no,billTxt(i),mode)}
+function reportPdf(b,mode){return pdfBtn(b,reportDoc,'Report-'+(rep.r=='m'?rep.m:rep.r+'-months')+'.pdf',BRAND.name+' revenue report',repTxt(),mode)}
 function storeOK(){try{localStorage.setItem('gd_t','1');localStorage.removeItem('gd_t');return true}catch(e){return false}}
 function renderList(){
   const t=q.toLowerCase(),l=S.members.filter(m=>(flt=='all'||status(m)==flt)&&(m.name.toLowerCase().includes(t)||m.phone.includes(t))).sort((a,b)=>a.end<b.end?-1:1);
@@ -475,7 +479,7 @@ function showInv(no){
   ${i.disc?`<tr><td>Discount</td><td>-${money(i.disc)}</td></tr>`:''}
   <tr><td><b>Total paid</b><br><span class="mu">by ${i.mode}</span></td><td><b>${money(i.total)}</b></td></tr></table>
   <div class="mu">Thank you for training with us.</div></div>
-  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button><button class="webonly" onclick="window.print()">Print</button><a class="btn" target="_blank" rel="noopener" href="${wa(i.phone,t)}">Send on WhatsApp</a><button onclick="$('#dlg').close()">Close</button></div>`;
+  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="billPdf('${i.no}',this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="window.print()">Print</button><a class="btn" target="_blank" rel="noopener" href="${wa(i.phone,t)}">Send on WhatsApp</a><button onclick="$('#dlg').close()">Close</button></div>`;
   if(!$('#dlg').open)$('#dlg').showModal();
 }
 const AK='gymdesk_auth';let authed=false;
