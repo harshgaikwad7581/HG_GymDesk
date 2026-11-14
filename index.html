@@ -74,6 +74,7 @@ dialog.fb[open]{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z
 .old{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;color:#111;padding:28px;z-index:99;font:16px/1.5 system-ui,sans-serif}
 body.native .webonly{display:none}
 body.native .wrap{padding-top:max(28px,env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
+.row.c{flex-wrap:nowrap}.row.c>div:first-child{flex:1;min-width:0;overflow-wrap:anywhere}.row.c .act{flex:none}
 /* v3 look */
 body{background:radial-gradient(900px 320px at 50% -80px,var(--acs),transparent) no-repeat,var(--bg)}
 .top{background:linear-gradient(135deg,var(--ac),var(--ac2));color:var(--acx);border-radius:18px;padding:20px 22px;align-items:center;box-shadow:0 14px 30px -18px var(--ac)}
@@ -196,7 +197,7 @@ members(){
 },
 inv(){
   const l=[...S.invoices].reverse();
-  return `<div class="card"><h2>Bills</h2>${l.length?l.map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, paid by ${i.mode}</div></div><div class="act"><b>${money(i.total)}</b><button onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills yet. Adding or renewing a member creates one.</div>'}</div>`;
+  return `<div class="card"><h2>Bills</h2>${l.length?l.map(i=>`<div class="row c"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, paid by ${i.mode}</div></div><div class="act"><b>${money(i.total)}</b><button onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills yet. Adding or renewing a member creates one.</div>'}</div>`;
 },
 set(){
   const s=S.settings,bk=esc(JSON.stringify(S));
@@ -224,7 +225,7 @@ const sumE=l=>l.reduce((s,x)=>s+x.amt,0);
 const ECAT=['Rent','Electricity','Salaries','Equipment','Maintenance','Marketing','Supplies','Other'];
 const catRows=l=>[...new Set(l.map(x=>x.cat))].map(k=>{const c=l.filter(x=>x.cat==k);return[k,c.length,sumE(c)]}).sort((a,b)=>b[2]-a[2]);
 let exm=today().slice(0,7);
-const erow=(x,ed)=>`<div class="row"><div><b>${esc(x.cat)}</b>${x.note?', '+esc(x.note):''}<div class="mu">${fmtD(x.date)}, ${esc(x.mode)}</div></div><div class="act"><b>${money(x.amt)}</b>${ed?`<button onclick="openExp('${x.id}')">Edit</button><button onclick="delExp('${x.id}',this)">Delete</button>`:''}</div></div>`;
+const erow=(x,ed)=>`<div class="row${ed?'':' c'}"><div><b>${esc(x.cat)}</b>${x.note?', '+esc(x.note):''}<div class="mu">${fmtD(x.date)}, ${esc(x.mode)}</div></div><div class="act"><b>${money(x.amt)}</b>${ed?`<button onclick="openExp('${x.id}')">Edit</button><button onclick="delExp('${x.id}',this)">Delete</button>`:''}</div></div>`;
 function expList(d){return rep.r!='m'||!d.E.length?'':`<div class="card"><h2>Expenses in ${mlabel(rep.m)}</h2>${[...d.E].sort((a,b)=>a.date<b.date?1:-1).map(x=>erow(x,0)).join('')}</div>`}
 V.exp=()=>{
   const l=S.expenses.filter(x=>x.date.startsWith(exm)).sort((a,b)=>a.date<b.date?1:-1),tot=sumE(l);
@@ -283,9 +284,9 @@ V.rep=()=>{
   const by=(arr,f)=>arr.map(k=>{const l=d.A.filter(i=>f(i)==k);return[PL[k]||k,l.length,sumT(l)]}).filter(r=>r[1]);
   const msg=`${S.settings.gym}: revenue, ${title}\nRevenue ${money(d.rev)}\nBills ${n} (${d.nw} new, ${n-d.nw} renewals)\nAverage bill ${money(avg)}\nExpenses ${money(d.exp)}\nProfit ${money(d.rev-d.exp)}`;
   const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th><th>Expenses</th><th>Profit</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length,r=sumT(l),e=sumE(d.E.filter(y=>y.date.startsWith(k)));return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td>${money(r)}</td><td>${money(e)}</td><td><b>${money(r-e)}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td><td><b>${money(d.exp)}</b></td><td><b>${money(d.rev-d.exp)}</b></td></tr></table></div>`;
-  const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
+  const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row c"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
   const c='style="--c:var(--ac)"';
-  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button class="pri" onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="reportPdf(this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
+  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="reportPdf(this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
   <h2 style="margin:4px 0 10px">${title}</h2>
   <div class="stats"><div class="card" ${c}><div class="num">${money(d.rev)}</div><div class="mu">Revenue</div>${chg}</div>
   <div class="card" style="--c:var(--er)"><div class="num">${money(d.exp)}</div><div class="mu">Expenses</div></div>
@@ -524,7 +525,7 @@ function showInv(no){
   ${i.disc?`<tr><td>Discount</td><td>-${money(i.disc)}</td></tr>`:''}
   <tr><td><b>Total paid</b><br><span class="mu">by ${i.mode}</span></td><td><b>${money(i.total)}</b></td></tr></table>
   <div class="mu">Thank you for training with us.</div></div>
-  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="billPdf('${i.no}',this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="window.print()">Print</button><button onclick="billWa('${i.no}',this)">Send on WhatsApp</button><button onclick="$('#dlg').close()">Close</button></div>`;
+  <div class="act noprint" style="margin-top:14px"><button onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="billPdf('${i.no}',this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="window.print()">Print</button><button onclick="billWa('${i.no}',this)">Send on WhatsApp</button><button onclick="$('#dlg').close()">Close</button></div>`;
   if(!$('#dlg').open)$('#dlg').showModal();
 }
 const AK='gymdesk_auth';let authed=false;
