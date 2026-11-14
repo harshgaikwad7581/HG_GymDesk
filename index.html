@@ -94,7 +94,7 @@ button,.btn{transition:.15s}.pri{box-shadow:0 6px 14px -8px var(--ac)}
 .meter{height:8px;background:var(--bg);border-radius:9px;overflow:hidden;margin-top:4px}.meter i{display:block;height:100%;background:var(--ac);border-radius:9px}
 .tbl{width:100%;border-collapse:collapse}.tbl th,.tbl td{padding:9px 6px;border-bottom:1px solid var(--bd);text-align:right}
 .tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{font-weight:600;color:var(--mu);font-size:13px}
-@media (max-width:560px){nav{flex-wrap:wrap}.num{font-size:32px}.top h1{font-size:28px}}
+@media (max-width:560px){nav{flex-wrap:wrap}.num{font-size:clamp(22px,6.6vw,30px);white-space:nowrap}.top h1{font-size:28px}}
 @media print{body.pr{--bg:#fff;--card:#fff;--tx:#111;--mu:#555;--bd:#ccc;--ac:#2b4bff;background:#fff;color:#111}body.pr .wrap{display:block}body.pr nav,body.pr .top,body.pr #licbar{display:none}}
 </style>
 </head>
@@ -109,6 +109,7 @@ button,.btn{transition:.15s}.pri{box-shadow:0 6px 14px -8px var(--ac)}
     <button data-t="dash" onclick="go('dash')">Dashboard</button>
     <button data-t="members" onclick="go('members')">Members</button>
     <button data-t="inv" onclick="go('inv')">Bills</button>
+    <button data-t="exp" onclick="go('exp')">Expenses</button>
     <button data-t="rep" onclick="go('rep')">Reports</button>
     <button data-t="set" onclick="go('set')">Settings</button>
   </nav>
@@ -134,7 +135,8 @@ const MAX_DEVICES=2;
 const EXPIRY_ON=false; /* keys work with no end date. Set true to enforce yearly expires dates from Firebase */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PL={1:'1 month',3:'3 months',6:'6 months',12:'1 year'};
-let S={settings:{gym:'My Gym',phone:'',cc:'91',cur:'₹',rd:7,prices:{1:1500,3:4000,6:7000,12:12000}},members:[],invoices:[],seq:1};
+let S={settings:{gym:'My Gym',phone:'',cc:'91',cur:'₹',rd:7,prices:{1:1500,3:4000,6:7000,12:12000}},members:[],invoices:[],expenses:[],seq:1};
+const S0=JSON.stringify(S);
 let tab='dash',q='',flt='all';
 function load(){try{const r=localStorage.getItem('gymdesk');if(r){const o=JSON.parse(r);S={...S,...o,settings:{...S.settings,...o.settings,prices:{...S.settings.prices,...(o.settings||{}).prices}}}}}catch(e){}}
 function saveLocal(){try{localStorage.setItem('gymdesk',JSON.stringify(S))}catch(e){}}
@@ -147,7 +149,7 @@ const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return iso(d)};
 function endDate(s,n){const d=pd(s),day=d.getDate(),e=new Date(d.getFullYear(),d.getMonth()+n,day);if(e.getDate()!==day)e.setDate(0);return addDays(iso(e),-1)}
 const diff=(a,b)=>Math.round((pd(a)-pd(b))/864e5);
 const fmtD=s=>pd(s).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
-const money=n=>S.settings.cur+Number(n).toLocaleString();
+const money=n=>(n<0?'-':'')+S.settings.cur+Math.abs(Number(n)).toLocaleString();
 const left=m=>diff(m.end,today());
 const status=m=>{const l=left(m);return l<0?'expired':l<=S.settings.rd?'expiring':'active'};
 const wa=(p,t)=>{let d=String(p).replace(/\D/g,'');if(d.length<=10)d=S.settings.cc+d;return 'https://wa.me/'+d+'?text='+encodeURIComponent(t)};
@@ -156,6 +158,7 @@ const badge=m=>{const s=status(m),l=left(m);return `<span class="badge ${s}">${s
 
 function go(t){tab=t;render()}
 function render(){
+  if(!S.expenses)S.expenses=[];
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
   $('#gym').textContent=S.settings.gym||'My Gym';
   $('#warn').innerHTML=storeOK()?'':'<div class="alert"><span><b>Your browser is not saving data.</b> Members and bills will be lost when you close this page. Leave private or incognito mode and allow site data for this page.</span></div>';
@@ -171,7 +174,7 @@ const V={
 dash(){
   const ms=S.members,mo=today().slice(0,7);
   const ex=ms.filter(m=>status(m)=='expiring').length,xp=ms.filter(m=>status(m)=='expired').length;
-  const rev=S.invoices.filter(i=>i.date.startsWith(mo)).reduce((s,i)=>s+i.total,0);
+  const rev=S.invoices.filter(i=>i.date.startsWith(mo)).reduce((s,i)=>s+i.total,0),spent=sumE(S.expenses.filter(x=>x.date.startsWith(mo)));
   const need=ms.filter(m=>left(m)<=S.settings.rd&&left(m)>=-30).sort((a,b)=>a.end<b.end?-1:1);
   const sum=`${S.settings.gym}: memberships needing renewal\n`+need.map(m=>`${m.name} (${m.phone}): ${left(m)<0?'expired '+fmtD(m.end):'ends '+fmtD(m.end)}`).join('\n');
   const owner=S.settings.phone?`<a class="btn pri" target="_blank" rel="noopener" href="${wa(S.settings.phone,sum)}">Send list to owner</a>`:`<button onclick="go('set')">Add owner number</button>`;
@@ -179,7 +182,9 @@ dash(){
    <div class="card"><div class="num">${ms.length-xp}</div><div class="mu">Active members</div></div>
    <div class="card"><div class="num">${ex}</div><div class="mu">Ending within ${S.settings.rd} days</div></div>
    <div class="card"><div class="num">${xp}</div><div class="mu">Expired</div></div>
-   <div class="card" style="cursor:pointer" onclick="go('rep')"><div class="num">${money(rev)}</div><div class="mu">Collected this month, tap for reports</div></div></div>
+   <div class="card" style="cursor:pointer" onclick="go('rep')"><div class="num">${money(rev)}</div><div class="mu">Collected this month, tap for reports</div></div>
+   <div class="card" style="cursor:pointer" onclick="go('exp')"><div class="num">${money(spent)}</div><div class="mu">Spent this month, tap for expenses</div></div>
+   <div class="card" style="cursor:pointer" onclick="go('rep')"><div class="num" style="color:var(--${rev-spent>=0?'ok':'er'})">${money(rev-spent)}</div><div class="mu">Profit this month</div></div></div>
    ${need.length?`<div class="alert"><span><b>${need.length} membership${need.length>1?'s':''} need${need.length>1?'':'s'} a renewal reminder.</b></span>${owner}</div>`:''}
    ${S.members.length&&(!S.lastBackup||diff(today(),S.lastBackup)>7)?`<div class="alert"><span><b>Back up your members and bills.</b> ${S.lastBackup?'Your last backup was '+diff(today(),S.lastBackup)+' days ago.':'You haven’t made a backup yet.'}</span><button onclick="go('set')">Back up now</button></div>`:''}
    <div class="card"><h2>Renewals due</h2>${need.length?need.map(m=>mrow(m)).join(''):'<div class="empty">Nobody is due for renewal right now.</div>'}</div>`;
@@ -205,7 +210,7 @@ set(){
   <div class="card"><h2>Login</h2><div class="g2"><label>Current password<input id="pw_o" type="password" autocomplete="current-password"></label><label>New password (6+ characters)<input id="pw_n" type="password" autocomplete="new-password"></label></div><div class="act"><button onclick="changePw()">Change password</button><span id="pw_m" class="mu"></span></div></div>
   ${cloudCard()}<div class="card"><h2>Using an iPhone?</h2><p class="mu">Open this page in Safari, tap Share, then Add to Home Screen, and always open the app from that icon. Safari can clear a website’s saved data after about a week of not using it, but apps on the home screen are not affected. Install first, then activate your key and create your login inside the home screen app.</p></div>
   <div class="card"><h2>Backup</h2><p class="mu">Data is stored in this browser only. Copy the text below and keep it safe; paste it back to restore.</p>
-  <textarea id="bk" rows="4">${bk}</textarea><div class="act" style="margin-top:8px"><button onclick="copyBk(this)">Copy</button>${(navigator.share||NATIVE)?'<button onclick="shareBk()">Share</button>':''}<button onclick="restore()">Restore from text</button></div></div>`;
+  <textarea id="bk" rows="4">${bk}</textarea><div class="act" style="margin-top:8px"><button onclick="copyBk(this)">Copy</button>${(navigator.share||NATIVE)?'<button onclick="shareBk()">Share</button>':''}<button onclick="restore()">Restore from text</button></div></div>${eraseCard()}`;
 }};
 /* ===== Reports ===== */
 let rep={r:'m',m:today().slice(0,7)};
@@ -215,25 +220,58 @@ const ml=(end,n)=>{const[y,m]=end.split('-').map(Number);return Array.from({leng
 const mlabel=k=>MN[+k.slice(5)-1]+' '+k.slice(0,4);
 const short=v=>v>=1e6?+(v/1e6).toFixed(1)+'M':v>=1e3?+(v/1e3).toFixed(1)+'k':String(v);
 const sumT=l=>l.reduce((s,i)=>s+i.total,0);
+const sumE=l=>l.reduce((s,x)=>s+x.amt,0);
+const ECAT=['Rent','Electricity','Salaries','Equipment','Maintenance','Marketing','Supplies','Other'];
+const catRows=l=>[...new Set(l.map(x=>x.cat))].map(k=>{const c=l.filter(x=>x.cat==k);return[k,c.length,sumE(c)]}).sort((a,b)=>b[2]-a[2]);
+let exm=today().slice(0,7);
+const erow=(x,ed)=>`<div class="row"><div><b>${esc(x.cat)}</b>${x.note?', '+esc(x.note):''}<div class="mu">${fmtD(x.date)}, ${esc(x.mode)}</div></div><div class="act"><b>${money(x.amt)}</b>${ed?`<button onclick="openExp('${x.id}')">Edit</button><button onclick="delExp('${x.id}',this)">Delete</button>`:''}</div></div>`;
+function expList(d){return rep.r!='m'||!d.E.length?'':`<div class="card"><h2>Expenses in ${mlabel(rep.m)}</h2>${[...d.E].sort((a,b)=>a.date<b.date?1:-1).map(x=>erow(x,0)).join('')}</div>`}
+V.exp=()=>{
+  const l=S.expenses.filter(x=>x.date.startsWith(exm)).sort((a,b)=>a.date<b.date?1:-1),tot=sumE(l);
+  return `<div class="bar noprint"><select style="width:auto" onchange="exm=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==exm?'selected':''}>${mlabel(k)}</option>`).join('')}</select><span style="flex:1"></span><button class="pri" onclick="openExp()">Add expense</button></div>
+  <div class="stats"><div class="card" style="--c:var(--er)"><div class="num">${money(tot)}</div><div class="mu">Spent in ${mlabel(exm)}</div></div><div class="card" style="--c:var(--ac)"><div class="num">${l.length}</div><div class="mu">Expenses recorded</div></div></div>
+  ${l.length?`<div class="card"><h2>By category</h2>${bars(catRows(l),tot,'expense')}</div>`:''}
+  <div class="card"><h2>Expenses in ${mlabel(exm)}</h2>${l.length?l.map(x=>erow(x,1)).join(''):'<div class="empty">No expenses in this month. Tap Add expense to record one.</div>'}</div>`;
+};
+function openExp(id){
+  const x=id?S.expenses.find(e=>e.id==id):null;
+  $('#dlg').innerHTML=`<h2>${x?'Edit expense':'New expense'}</h2>
+  <div class="g2"><label>Amount<input id="x_a" type="number" min="0" inputmode="decimal" value="${x?x.amt:''}"></label>
+  <label>Date<input id="x_d" type="date" value="${x?x.date:today()}"></label>
+  <label>Category<select id="x_c">${ECAT.map(c=>`<option ${x&&x.cat==c?'selected':''}>${c}</option>`).join('')}</select></label>
+  <label>Paid by<select id="x_m">${['Cash','UPI','Card','Bank'].map(c=>`<option ${x&&x.mode==c?'selected':''}>${c}</option>`).join('')}</select></label></div>
+  <label>Note (optional)<input id="x_n" value="${x?esc(x.note):''}" placeholder="Example: November rent"></label>
+  <div id="x_e" class="err"></div><div class="act"><button class="pri" onclick="saveExp('${id||''}')">Save</button><button onclick="$('#dlg').close()">Cancel</button></div>`;
+  $('#dlg').showModal();
+}
+function saveExp(id){
+  const amt=Math.round((+$('#x_a').value||0)*100)/100,date=$('#x_d').value||today();
+  if(!(amt>0)){$('#x_e').textContent='Enter an amount greater than zero.';return}
+  const r={id:id||'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),date,cat:$('#x_c').value,amt,mode:$('#x_m').value,note:$('#x_n').value.trim()};
+  if(id){const k=S.expenses.findIndex(e=>e.id==id);S.expenses[k]=r}else S.expenses.push(r);
+  exm=date.slice(0,7);save();$('#dlg').close();render();
+}
+function delExp(id,b){if(b.dataset.c){S.expenses=S.expenses.filter(e=>e.id!=id);save();render()}else{b.dataset.c=1;b.textContent='Sure?'}}
 function repData(){
   const cur=rep.r=='m'?[rep.m]:ml(today().slice(0,7),+rep.r),pv=ml(ml(cur[0],2)[0],cur.length);
   const fi={};S.invoices.forEach(i=>{if(!fi[i.mid]||i.no<fi[i.mid])fi[i.mid]=i.no});
-  const sel=a=>S.invoices.filter(i=>a.includes(i.date.slice(0,7)));
-  const A=sel(cur),P=sel(pv);let labels,vals;
-  if(rep.r=='m'){const[y,m]=rep.m.split('-').map(Number),dn=new Date(y,m,0).getDate();labels=Array.from({length:dn},(_,i)=>i+1);vals=labels.map(d=>sumT(A.filter(i=>+i.date.slice(8)==d)))}
-  else{labels=cur.map(k=>MN[+k.slice(5)-1]);vals=cur.map(k=>sumT(A.filter(i=>i.date.startsWith(k))))}
-  return{cur,A,rev:sumT(A),prev:sumT(P),nw:A.filter(i=>fi[i.mid]==i.no).length,fi,labels,vals};
+  const sel=a=>S.invoices.filter(i=>a.includes(i.date.slice(0,7))),selE=a=>(S.expenses||[]).filter(x=>a.includes(x.date.slice(0,7)));
+  const A=sel(cur),P=sel(pv),E=selE(cur),PE=selE(pv);let labels,vals,evals;
+  if(rep.r=='m'){const[y,m]=rep.m.split('-').map(Number),dn=new Date(y,m,0).getDate();labels=Array.from({length:dn},(_,i)=>i+1);vals=labels.map(d=>sumT(A.filter(i=>+i.date.slice(8)==d)));evals=labels.map(d=>sumE(E.filter(x=>+x.date.slice(8)==d)))}
+  else{labels=cur.map(k=>MN[+k.slice(5)-1]);vals=cur.map(k=>sumT(A.filter(i=>i.date.startsWith(k))));evals=cur.map(k=>sumE(E.filter(x=>x.date.startsWith(k))))}
+  return{cur,A,E,rev:sumT(A),prev:sumT(P),exp:sumE(E),pexp:sumE(PE),nw:A.filter(i=>fi[i.mid]==i.no).length,fi,labels,vals,evals};
 }
-function chart(labels,vals,hi){
-  const W=640,H=260,pl=8,pb=40,pt=34,n=vals.length,mx=Math.max(...vals,1),bw=(W-pl*2)/n,g=Math.min(10,bw*.25);
-  let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Revenue chart" style="display:block"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="var(--bd)"/>`;
-  vals.forEach((v,i)=>{const h=(H-pb-pt)*v/mx,x=pl+i*bw+g/2,y=H-pb-h,cx=x+(bw-g)/2;
-    o+=`<rect x="${x}" y="${y}" width="${bw-g}" height="${v?Math.max(h,2):0}" rx="4" fill="var(--ac)" opacity="${hi<0||i==hi?1:.6}"/>`;
-    if(v&&n<=12)o+=`<text x="${cx}" y="${y-8}" text-anchor="middle" font-size="20" font-weight="600" fill="var(--tx)">${short(v)}</text>`;
+function chart(labels,vals,hi,ev){
+  const W=640,H=260,pl=8,pb=40,pt=34,n=vals.length,mx=Math.max(...vals,...(ev||[]),1),bw=(W-pl*2)/n,g=Math.min(10,bw*.25),two=!!ev&&ev.some(v=>v>0),sw=(bw-g)/(two?2:1),fs=two?16:20;
+  let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Revenue and expenses chart" style="display:block"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="var(--bd)"/>`;
+  vals.forEach((v,i)=>{const x0=pl+i*bw+g/2,cx=x0+(bw-g)/2;
+    const bar=(val,x,fill)=>{const h=(H-pb-pt)*val/mx,y=H-pb-h,bwid=sw-(two?1:0);
+      return `<rect x="${x}" y="${y}" width="${bwid}" height="${val?Math.max(h,2):0}" rx="3" fill="${fill}" opacity="${hi<0||i==hi?1:.6}"/>`+(val&&n<=12?`<text x="${x+bwid/2}" y="${y-8}" text-anchor="middle" font-size="${fs}" font-weight="600" fill="var(--tx)">${short(val)}</text>`:'')};
+    o+=bar(v,x0,'var(--ac)');if(two)o+=bar(ev[i],x0+sw,'var(--er)');
     if(n<=12||i%5==0)o+=`<text x="${cx}" y="${H-12}" text-anchor="middle" font-size="20" fill="var(--mu)">${labels[i]}</text>`});
   return o+'</svg>';
 }
-const bars=(rows,tot)=>rows.map(([k,c,v])=>`<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(k)}</span><span class="mu">${c} bill${c==1?'':'s'}, <b style="color:var(--tx)">${money(v)}</b></span></div><div class="meter"><i style="width:${tot?Math.round(v/tot*100):0}%"></i></div></div>`).join('');
+const bars=(rows,tot,u)=>rows.map(([k,c,v])=>`<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(k)}</span><span class="mu">${c} ${u||'bill'}${c==1?'':'s'}, <b style="color:var(--tx)">${money(v)}</b></span></div><div class="meter"><i style="width:${tot?Math.round(v/tot*100):0}%"></i></div></div>`).join('');
 const setR=r=>{rep.r=r;render()};
 function printRep(){const done=()=>document.body.classList.remove('pr');document.body.classList.add('pr');window.addEventListener('afterprint',done,{once:true});setTimeout(done,120000);window.print()}
 V.rep=()=>{
@@ -243,18 +281,20 @@ V.rep=()=>{
   const bi=d.vals.indexOf(Math.max(...d.vals)),best=n?`Best ${mo?'day':'month'}: ${mo?fmtD(rep.m+'-'+String(d.labels[bi]).padStart(2,'0')):mlabel(d.cur[bi])}, ${money(d.vals[bi])}`:'';
   const hi=mo?(rep.m==today().slice(0,7)?+today().slice(8)-1:-1):d.vals.length-1;
   const by=(arr,f)=>arr.map(k=>{const l=d.A.filter(i=>f(i)==k);return[PL[k]||k,l.length,sumT(l)]}).filter(r=>r[1]);
-  const msg=`${S.settings.gym}: revenue, ${title}\nRevenue ${money(d.rev)}\nBills ${n} (${d.nw} new, ${n-d.nw} renewals)\nAverage bill ${money(avg)}`;
-  const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length;return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td><b>${money(sumT(l))}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td></tr></table></div>`;
+  const msg=`${S.settings.gym}: revenue, ${title}\nRevenue ${money(d.rev)}\nBills ${n} (${d.nw} new, ${n-d.nw} renewals)\nAverage bill ${money(avg)}\nExpenses ${money(d.exp)}\nProfit ${money(d.rev-d.exp)}`;
+  const tbl=mo?'':`<div class="card" style="overflow-x:auto"><h2>Month by month</h2><table class="tbl"><tr><th>Month</th><th>Bills</th><th>New</th><th>Renewals</th><th>Revenue</th><th>Expenses</th><th>Profit</th></tr>${[...d.cur].reverse().map(k=>{const l=d.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>d.fi[i.mid]==i.no).length,r=sumT(l),e=sumE(d.E.filter(y=>y.date.startsWith(k)));return`<tr><td>${mlabel(k)}</td><td>${l.length}</td><td>${x}</td><td>${l.length-x}</td><td>${money(r)}</td><td>${money(e)}</td><td><b>${money(r-e)}</b></td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${n}</b></td><td><b>${d.nw}</b></td><td><b>${n-d.nw}</b></td><td><b>${money(d.rev)}</b></td><td><b>${money(d.exp)}</b></td><td><b>${money(d.rev-d.exp)}</b></td></tr></table></div>`;
   const lst=!mo?'':`<div class="card"><h2>Bills in ${mlabel(rep.m)}</h2>${n?[...d.A].reverse().map(i=>`<div class="row"><div><b>${i.no}</b>, ${esc(i.name)}<div class="mu">${fmtD(i.date)}, ${PL[i.plan]}, ${i.mode}${d.fi[i.mid]==i.no?', new member':''}</div></div><div class="act"><b>${money(i.total)}</b><button class="noprint" onclick="showInv('${i.no}')">View</button></div></div>`).join(''):'<div class="empty">No bills in this month.</div>'}</div>`;
   const c='style="--c:var(--ac)"';
-  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="reportPdf(this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
+  return `<div class="bar noprint"><div class="seg">${[['m','Month'],['6','6 months'],['12','1 year']].map(([k,t])=>`<button class="${rep.r==k?'on':''}" onclick="setR('${k}')">${t}</button>`).join('')}</div>${mo?`<select style="width:auto" onchange="rep.m=this.value;render()">${[...ml(today().slice(0,7),24)].reverse().map(k=>`<option value="${k}" ${k==rep.m?'selected':''}>${mlabel(k)}</option>`).join('')}</select>`:''}<span style="flex:1"></span>${S.settings.phone?`<a class="btn" target="_blank" rel="noopener" href="${wa(S.settings.phone,msg)}">Send to my WhatsApp</a>`:''}<button class="pri" onclick="reportPdf(this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="reportPdf(this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="printRep()">Print</button></div>
   <h2 style="margin:4px 0 10px">${title}</h2>
   <div class="stats"><div class="card" ${c}><div class="num">${money(d.rev)}</div><div class="mu">Revenue</div>${chg}</div>
+  <div class="card" style="--c:var(--er)"><div class="num">${money(d.exp)}</div><div class="mu">Expenses</div></div>
+  <div class="card" style="--c:var(--${d.rev-d.exp>=0?'ok':'er'})"><div class="num">${money(d.rev-d.exp)}</div><div class="mu">Profit (revenue minus expenses)</div></div>
   <div class="card" ${c}><div class="num">${n}</div><div class="mu">Bills</div></div>
   <div class="card" ${c}><div class="num">${money(avg)}</div><div class="mu">Average bill</div></div>
   <div class="card" ${c}><div class="num">${d.nw} / ${n-d.nw}</div><div class="mu">New members / renewals</div></div></div>
-  <div class="card"><h2>${mo?'Revenue by day':'Revenue by month'}</h2>${n?chart(d.labels.map(String),d.vals,hi)+`<div class="mu" style="margin-top:6px">${best}</div>`:'<div class="empty">No bills in this period yet.</div>'}</div>
-  ${n?`<div class="g2" style="gap:0 14px"><div class="card"><h2>By plan</h2>${bars(by([1,3,6,12],i=>i.plan),d.rev)}</div><div class="card"><h2>By payment mode</h2>${bars(by(['Cash','UPI','Card'],i=>i.mode),d.rev)}</div></div>`:''}${tbl}${lst}`;
+  <div class="card"><h2>${mo?'Revenue by day':'Revenue by month'}</h2>${(n||d.E.length)?chart(d.labels.map(String),d.vals,hi,d.evals)+`<div class="mu" style="margin-top:6px"><span style="color:var(--ac)">■</span> Revenue &nbsp; <span style="color:var(--er)">■</span> Expenses</div>`+`<div class="mu" style="margin-top:6px">${best}</div>`:'<div class="empty">No bills or expenses in this period yet.</div>'}</div>
+  ${n?`<div class="g2" style="gap:0 14px"><div class="card"><h2>By plan</h2>${bars(by([1,3,6,12],i=>i.plan),d.rev)}</div><div class="card"><h2>By payment mode</h2>${bars(by(['Cash','UPI','Card'],i=>i.mode),d.rev)}</div></div>`:''}${d.E.length?`<div class="card"><h2>Expenses by category</h2>${bars(catRows(d.E),d.exp,'expense')}</div>`:''}${tbl}${lst}${expList(d)}`;
 };
 /* ===== end Reports ===== */
 async function copyBk(b){
@@ -377,33 +417,38 @@ function billDoc(i){
   d.t('Thank you for training with us.',100,26,{col:'#555'});return d;
 }
 function reportDoc(){
-  const a=repData(),n=a.A.length,avg=n?Math.round(a.rev/n):0,mo=rep.r=='m',d=new Doc();
+  const a=repData(),n=a.A.length,avg=n?Math.round(a.rev/n):0,mo=rep.r=='m',d=new Doc(),pf=a.rev-a.exp;
   const title=mo?mlabel(rep.m):(rep.r=='6'?'Last 6 months':'Last 12 months')+' ('+mlabel(a.cur[0])+' to '+mlabel(a.cur[a.cur.length-1])+')';
   d.t(S.settings.gym,100,46,{b:1});d.y+=46;d.t('Revenue report: '+title,100,28,{col:'#555'});d.y+=80;
-  [[money(a.rev),'Revenue'],[String(n),'Bills'],[money(avg),'Average bill'],[a.nw+' / '+(n-a.nw),'New members / renewals']].forEach(([v,l],j)=>{
-    const x=100+j*(232+21);d.rect(x,d.y-44,232,124,null,'#ccc');d.t(v,x+16,34,{b:1,y:d.y+4});d.t(l,x+16,19,{col:'#555',y:d.y+44})});
-  d.y+=130;
-  d.t(mo?'Revenue by day':'Revenue by month',100,30,{b:1});d.y+=30;
-  const V=a.vals,H=320,base=d.y+H,mx=Math.max(...V,1),bw=990/V.length,g=Math.min(14,bw*.25);
-  if(!n){d.y+=40;d.t('No bills in this period yet.',100,24,{col:'#555'});d.y+=60}
-  else{V.forEach((v,i)=>{const h=H*.85*v/mx,x=100+i*bw+g/2,cx=x+(bw-g)/2;d.rect(x,base-h,bw-g,h,'#2b4bff');
-    if(v&&V.length<=12)d.t(short(v),cx,22,{b:1,al:'center',y:base-h-8});
-    if(V.length<=12||i%5==0)d.t(a.labels[i],cx,22,{col:'#555',al:'center',y:base+30})});
-    d.rect(100,base,990,2,'#999');d.y=base+90}
+  const kp=rows=>{rows.forEach(([v,l,c],j)=>{const x=100+j*335;d.rect(x,d.y-44,320,124,null,'#ccc');d.t(v,x+16,34,{b:1,col:c||'#111',y:d.y+4});d.t(l,x+16,19,{col:'#555',y:d.y+44})});d.y+=140};
+  kp([[money(a.rev),'Revenue'],[money(a.exp),'Expenses','#b3202a'],[money(pf),'Profit',pf<0?'#b3202a':'#0f7a55']]);
+  kp([[String(n),'Bills'],[money(avg),'Average bill'],[a.nw+' / '+(n-a.nw),'New members / renewals']]);
+  d.t(mo?'Revenue and expenses by day':'Revenue and expenses by month',100,30,{b:1});d.y+=30;
+  const V=a.vals,Ev=a.evals,two=Ev.some(v=>v>0),H=320,base=d.y+H,mx=Math.max(...V,...Ev,1),bw=990/V.length,g=Math.min(14,bw*.25),sw=(bw-g)/(two?2:1);
+  if(!n&&!a.E.length){d.y+=40;d.t('No bills or expenses in this period yet.',100,24,{col:'#555'});d.y+=60}
+  else{V.forEach((v,i)=>{const x=100+i*bw+g/2,cx=x+(bw-g)/2;
+      const bar=(val,xx,col)=>{const h=H*.85*val/mx,w=sw-(two?2:0);d.rect(xx,base-h,w,h,col);if(val&&V.length<=12)d.t(short(val),xx+w/2,two?17:22,{b:1,al:'center',y:base-h-8})};
+      bar(v,x,'#2b4bff');if(two)bar(Ev[i],x+sw,'#d9363e');
+      if(V.length<=12||i%5==0)d.t(a.labels[i],cx,22,{col:'#555',al:'center',y:base+30})});
+    d.rect(100,base,990,2,'#999');d.y=base+64;d.t('Blue = revenue, red = expenses',100,20,{col:'#555'});d.y+=56}
   const by=(arr,f)=>arr.map(k=>{const l=a.A.filter(i=>f(i)==k);return[PL[k]||k,l.length,sumT(l)]}).filter(r=>r[1]);
-  const list=(h,rows)=>{if(!rows.length)return;d.need(90+rows.length*72);d.t(h,100,30,{b:1});d.y+=50;
-    rows.forEach(([k,c,v])=>{d.t(k,100,26);d.t(c+' bill'+(c==1?'':'s')+', '+money(v),1090,26,{al:'right'});d.y+=22;d.meter(a.rev?v/a.rev:0);d.y+=50});d.y+=24};
-  list('By plan',by([1,3,6,12],i=>i.plan));list('By payment mode',by(['Cash','UPI','Card'],i=>i.mode));
+  const list=(h,rows,u,tot)=>{if(!rows.length)return;d.need(90+rows.length*72);d.t(h,100,30,{b:1});d.y+=50;
+    rows.forEach(([k,c,v])=>{d.t(k,100,26);d.t(c+' '+u+(c==1?'':'s')+', '+money(v),1090,26,{al:'right'});d.y+=22;d.meter(tot?v/tot:0);d.y+=50});d.y+=24};
+  list('By plan',by([1,3,6,12],i=>i.plan),'bill',a.rev);list('By payment mode',by(['Cash','UPI','Card'],i=>i.mode),'bill',a.rev);
+  list('Expenses by category',catRows(a.E),'expense',a.exp);
   if(!mo){
     d.need(170);d.t('Month by month',100,30,{b:1});d.y+=54;
-    const row=(c,b)=>{d.need(60);c.forEach((v,j)=>d.t(v,[100,520,680,860,1090][j],24,{b:b,al:j?'right':'left'}));d.y+=14;d.hr('#ddd');d.y+=42};
-    row(['Month','Bills','New','Renewals','Revenue'],1);
-    [...a.cur].reverse().forEach(k=>{const l=a.A.filter(i=>i.date.startsWith(k)),x=l.filter(i=>a.fi[i.mid]==i.no).length;row([mlabel(k),l.length,x,l.length-x,money(sumT(l))])});
-    row(['Total',n,a.nw,n-a.nw,money(a.rev)],1);
-  }else if(n){
-    d.need(130);d.t('Bills in '+mlabel(rep.m),100,30,{b:1});d.y+=54;
-    [...a.A].reverse().forEach(i=>{d.need(96);d.t(i.no+', '+i.name,100,24,{b:1});d.t(money(i.total),1090,24,{b:1,al:'right'});d.y+=30;
-      d.t(fmtD(i.date)+', '+PL[i.plan]+', '+i.mode+(a.fi[i.mid]==i.no?', new member':''),100,20,{col:'#555'});d.y+=14;d.hr('#ddd');d.y+=46});
+    const row=(c,b)=>{d.need(60);c.forEach((v,j)=>d.t(v,[100,430,640,860,1090][j],24,{b:b,al:j?'right':'left'}));d.y+=14;d.hr('#ddd');d.y+=42};
+    row(['Month','Bills','Revenue','Expenses','Profit'],1);
+    [...a.cur].reverse().forEach(k=>{const l=a.A.filter(i=>i.date.startsWith(k)),r=sumT(l),e=sumE(a.E.filter(x=>x.date.startsWith(k)));row([mlabel(k),l.length,money(r),money(e),money(r-e)])});
+    row(['Total',n,money(a.rev),money(a.exp),money(pf)],1);
+  }else{
+    if(n){d.need(130);d.t('Bills in '+mlabel(rep.m),100,30,{b:1});d.y+=54;
+      [...a.A].reverse().forEach(i=>{d.need(96);d.t(i.no+', '+i.name,100,24,{b:1});d.t(money(i.total),1090,24,{b:1,al:'right'});d.y+=30;
+        d.t(fmtD(i.date)+', '+PL[i.plan]+', '+i.mode+(a.fi[i.mid]==i.no?', new member':''),100,20,{col:'#555'});d.y+=14;d.hr('#ddd');d.y+=46})}
+    if(a.E.length){d.need(130);d.t('Expenses in '+mlabel(rep.m),100,30,{b:1});d.y+=54;
+      [...a.E].sort((p,q)=>p.date<q.date?1:-1).forEach(x=>{d.need(96);d.t(x.cat+(x.note?', '+x.note:''),100,24,{b:1});d.t(money(x.amt),1090,24,{b:1,al:'right'});d.y+=30;
+        d.t(fmtD(x.date)+', '+x.mode,100,20,{col:'#555'});d.y+=14;d.hr('#ddd');d.y+=46})}
   }
   return d;
 }
@@ -420,10 +465,10 @@ function toast(msg,ms){
   d.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9999;background:#111;color:#fff;padding:14px 16px;border-radius:10px;font:15px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4)';
   d.onclick=()=>d.remove();(document.querySelector('dialog[open]')||document.body).appendChild(d);setTimeout(()=>d.remove(),ms||15000)}
 const billTxt=i=>`${S.settings.gym}: Bill ${i.no} for ${i.name}. ${PL[i.plan]} membership, ${fmtD(i.start)} to ${fmtD(i.end)}. Total paid ${money(i.total)} (${i.mode}).`;
-function repTxt(){const a=repData(),n=a.A.length;return `${S.settings.gym}: revenue report. Revenue ${money(a.rev)}, ${n} bill${n==1?'':'s'} (${a.nw} new, ${n-a.nw} renewals), average bill ${money(n?Math.round(a.rev/n):0)}.`}
-function savePdf(bytes,name){
+function repTxt(){const a=repData(),n=a.A.length;return `${S.settings.gym}: report. Revenue ${money(a.rev)}, expenses ${money(a.exp)}, profit ${money(a.rev-a.exp)}. ${n} bill${n==1?'':'s'} (${a.nw} new, ${n-a.nw} renewals), average bill ${money(n?Math.round(a.rev/n):0)}.`}
+function savePdf(bytes,name,quiet){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=name;a.style.display='none';document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},15000);toast('PDF saved as '+name+'. Look in your Downloads folder.',6000)}
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},15000);if(!quiet)toast('PDF saved as '+name+'. Look in your Downloads folder.',6000)}
 const shareOK=()=>{try{return !NATIVE&&!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'a.pdf',{type:'application/pdf'})]}))}catch(e){return false}};
 async function pdfBtn(b,make,name,title,txt,mode){
   mode=mode||(NATIVE?'share':'save');const t=b.textContent;b.textContent='Preparing…';
@@ -479,7 +524,7 @@ function showInv(no){
   ${i.disc?`<tr><td>Discount</td><td>-${money(i.disc)}</td></tr>`:''}
   <tr><td><b>Total paid</b><br><span class="mu">by ${i.mode}</span></td><td><b>${money(i.total)}</b></td></tr></table>
   <div class="mu">Thank you for training with us.</div></div>
-  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="billPdf('${i.no}',this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="window.print()">Print</button><a class="btn" target="_blank" rel="noopener" href="${wa(i.phone,t)}">Send on WhatsApp</a><button onclick="$('#dlg').close()">Close</button></div>`;
+  <div class="act noprint" style="margin-top:14px"><button class="pri" onclick="billPdf('${i.no}',this)">${NATIVE?'Share PDF':'Save PDF'}</button>${shareOK()?`<button onclick="billPdf('${i.no}',this,'share')">Share PDF</button>`:''}<button class="webonly" onclick="window.print()">Print</button><button onclick="billWa('${i.no}',this)">Send on WhatsApp</button><button onclick="$('#dlg').close()">Close</button></div>`;
   if(!$('#dlg').open)$('#dlg').showModal();
 }
 const AK='gymdesk_auth';let authed=false;
@@ -598,6 +643,29 @@ async function changePw(){
   const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:a.user,salt,hash:await hash(n,salt),gym:a.gym});
   $('#pw_o').value='';$('#pw_n').value='';cloudAuthUp();m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
 }
+const waBillTxt=i=>`Hi ${i.name}, this is ${S.settings.gym}. Your bill ${i.no}: ${PL[i.plan]} membership, ${fmtD(i.start)} to ${fmtD(i.end)}. Amount paid: ${money(i.total)} (${i.mode}). Please find the bill PDF attached. Thank you!`;
+function billWa(no,b){
+  const i=S.invoices.find(x=>x.no==no);
+  if(NATIVE)return pdfBtn(b,()=>billDoc(i),'Bill-'+i.no+'.pdf',BRAND.name+' bill '+i.no,waBillTxt(i),'share');
+  try{savePdf(billDoc(i).done(),'Bill-'+i.no+'.pdf',true)}catch(e){toast('The PDF could not be made, but WhatsApp will open with the bill details.',6000)}
+  window.open(wa(i.phone,waBillTxt(i)),'_blank');
+  toast('Bill PDF saved. In WhatsApp, tap the paperclip, choose Document, and pick Bill-'+i.no+'.pdf from Downloads.',14000);
+}
+async function eraseAll(k,b,e){
+  if(!b.dataset.c){b.dataset.c=1;b.dataset.t=b.textContent;b.textContent='This erases ALL data on every device. Tap again to confirm';return}
+  const back=()=>{b.dataset.c='';b.textContent=b.dataset.t};
+  try{
+    if(lic){if(!k){e.textContent='Enter your licence key first.';back();return}if(await sha(k)!==lic.h){e.textContent='That licence key doesn’t match this gym.';back();return}}
+    const old=S,oldAuth=getAuth();S=JSON.parse(S0);
+    try{if(lic){try{localStorage.removeItem(AK)}catch(x){}await cloudUp(true);await rw(cb()+'/auth',null)}}
+    catch(x){S=old;if(oldAuth)setAuth(oldAuth);e.textContent='Couldn’t erase the cloud copy ('+((x&&x.message)||'network')+'). Nothing was changed.';back();return}
+    try{localStorage.removeItem(AK)}catch(x){}
+    saveLocal();sySave({...sy(),pending:false});setSess(false);showLogin();
+  }catch(x){e.textContent='Couldn’t erase ('+((x&&x.message)||'error')+').';back()}
+}
+function eraseFromReset(b){const f=$('#r_k');return eraseAll((f?f.value:'').toUpperCase().replace(/\s/g,''),b,$('#r_e'))}
+function eraseFromSettings(b){const f=$('#e_k');return eraseAll((f?f.value:'').toUpperCase().replace(/\s/g,''),b,$('#e_e'))}
+function eraseCard(){return `<div class="card"><h2>Start over</h2><p class="mu">Erase all members, bills and settings and set the app up again from scratch.${lic?' This also erases the cloud copy, so every device starts empty. Enter your licence key to confirm.':''}</p>${lic?'<label>Licence key<input id="e_k" autocapitalize="characters"></label>':''}<div id="e_e" class="err"></div><button style="border-color:var(--er);color:var(--er)" onclick="eraseFromSettings(this)">Erase everything and start over</button></div>`}
 function gymAuth(){const a=getAuth();if(a){a.gym=S.settings.gym;setAuth(a);cloudAuthUp()}}
 function syncGym(){const a=getAuth();if(a&&S.settings.gym&&S.settings.gym!=='My Gym'&&a.gym!==S.settings.gym){a.gym=S.settings.gym;setAuth(a);cloudAuthUp()}}
 function showReset(){
@@ -608,7 +676,8 @@ function showReset(){
   <label>New username<input id="r_u" autocomplete="username"></label>
   <label>New password (6+ characters)<input id="r_p" type="password" autocomplete="new-password"></label>
   <label>Confirm new password<input id="r_c" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReset()"></label>
-  <div id="r_e" class="err"></div><div class="act"><button class="pri" onclick="doReset()">Reset login</button><button onclick="showLogin()">Back</button></div></div>`;
+  <div id="r_e" class="err"></div><div class="act"><button class="pri" onclick="doReset()">Reset login</button><button onclick="showLogin()">Back</button></div></div>
+  <p class="mu" style="margin-top:14px">Want to start completely fresh instead? ${lic?'Enter your licence key above, then ':''}<button class="lnk" style="color:var(--er)" onclick="eraseFromReset(this)">erase everything and start over</button>.</p>`;
   $('#r_k').focus();
 }
 async function doReset(){
