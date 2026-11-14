@@ -133,6 +133,7 @@ const DB_HOSTS=['https://'+DB_NAME+'.firebaseio.com','https://'+DB_NAME+'.europe
 let _base='';
 async function base(){if(_base)return _base;for(const h of DB_HOSTS){try{const r=await fetch(h+'/licences/ping.json',{cache:'no-store'});if(r.ok){_base=h;return h}}catch(e){}}throw new Error('database not found')}
 const MAX_DEVICES=2;
+const APP_VERSION='6 (14 Nov 2026)';
 const EXPIRY_ON=false; /* keys work with no end date. Set true to enforce yearly expires dates from Firebase */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PL={1:'1 month',3:'3 months',6:'6 months',12:'1 year'};
@@ -574,7 +575,7 @@ async function hb(){
 }
 setInterval(hb,300000);document.addEventListener('visibilitychange',hb);
 async function sha(s){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',enc(s)))].map(b=>b.toString(16).padStart(2,'0')).join('')}
-function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button>`}
+function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button><br>Version ${APP_VERSION}`}
 async function boot(){
   expLocked=false;foot();
   try{lic=lic||JSON.parse(localStorage.getItem(LK))}catch(e){}
