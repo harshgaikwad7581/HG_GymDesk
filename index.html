@@ -133,7 +133,8 @@ const DB_HOSTS=['https://'+DB_NAME+'.firebaseio.com','https://'+DB_NAME+'.europe
 let _base='';
 async function base(){if(_base)return _base;for(const h of DB_HOSTS){try{const r=await fetch(h+'/licences/ping.json',{cache:'no-store'});if(r.ok){_base=h;return h}}catch(e){}}throw new Error('database not found')}
 const MAX_DEVICES=2;
-const EXPIRY_ON=false; /* keys work with no end date. Set true to enforce yearly expires dates from Firebase */
+const APP_VERSION='7 (15 Nov 2026)';
+const EXPIRY_ON=true; /* yearly subscription: each key's year starts when it is first used. Keys marked unlimited never expire */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PL={1:'1 month',3:'3 months',6:'6 months',12:'1 year'};
 let S={settings:{gym:'My Gym',phone:'',cc:'91',cur:'₹',rd:7,prices:{1:1500,3:4000,6:7000,12:12000}},members:[],invoices:[],expenses:[],seq:1};
@@ -546,6 +547,9 @@ function lt(){let t=Date.now(),m=0;try{m=+localStorage.getItem('gymdesk_seen')||
   if(t<m-864e5)t=m;else try{localStorage.setItem('gymdesk_seen',String(Math.max(t,m)))}catch(e){}
   return iso(new Date(t))}
 const vexp=()=>lic&&lic.exp&&!isNaN(pd(lic.exp))?lic.exp:'';
+const expOf=L=>{if(!L||L.unlimited)return '';if(L.expires)return L.expires;if(L.started)return iso(new Date(L.started+((+L.days||365)-1)*864e5));return ''};
+const needStart=L=>EXPIRY_ON&&L&&!L.unlimited&&!L.started&&!L.expires;
+async function startLic(h){await rw('licences/'+h+'/started',{'.sv':'timestamp'});try{await rw('licences/'+h+'/startedOn',today())}catch(x){}}
 async function verify(){
   let L;
   try{L=await rt(lic.h)}
@@ -553,7 +557,8 @@ async function verify(){
     if(Date.now()-(lic.ok||0)>=72*36e5)return 'locked';
     return lic.exp&&diff(lic.exp,lt())<-GRACE_DAYS?'expired':'offline'}
   if(!L||!L.active||!(L.devices&&L.devices[devId()]))return 'revoked';
-  lic.ok=Date.now();lic.exp=EXPIRY_ON?(L.expires||''):'';saveLic();
+  if(needStart(L)){try{await startLic(lic.h);L=await rt(lic.h)}catch(x){}}
+  lic.ok=Date.now();lic.exp=EXPIRY_ON?expOf(L):'';saveLic();
   return lic.exp&&diff(lic.exp,lt())<-GRACE_DAYS?'expired':'ok';
 }
 const renewUrl=()=>wa(BRAND.phone,`Hi, I’d like to renew my ${BRAND.name} licence for ${S.settings.gym}.`);
@@ -574,7 +579,7 @@ async function hb(){
 }
 setInterval(hb,300000);document.addEventListener('visibilitychange',hb);
 async function sha(s){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',enc(s)))].map(b=>b.toString(16).padStart(2,'0')).join('')}
-function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button>`}
+function foot(){const e=vexp();$('#foot').innerHTML=`© ${BRAND.year} ${esc(BRAND.name)}. Licensed for one gym only.${e?' Licence valid until '+fmtD(e)+'.':''} <button class="lnk" onclick="showTerms()">Licence terms</button><br>Version ${APP_VERSION}`}
 async function boot(){
   expLocked=false;foot();
   try{lic=lic||JSON.parse(localStorage.getItem(LK))}catch(e){}
@@ -597,8 +602,9 @@ async function doLicence(){
   const k=$('#k_k').value.toUpperCase().replace(/\s/g,''),e=$('#k_e');
   e.textContent='Checking…';
   try{
-    const h=await sha(k),L=await rt(h);
+    const h=await sha(k);let L=await rt(h);
     if(!L||!L.active){e.textContent='That key isn’t valid or has been cancelled.';return}
+    if(needStart(L)){try{await startLic(h)}catch(x){throw new Error('could not start the licence ('+((x&&x.message)||'error')+')')}L=await rt(h)}
     const dev=devId(),now=Date.now(),d={...(L.devices||{})};d[dev]=now;
     const ids=Object.keys(d).sort((a,b)=>d[a]-d[b]);while(ids.length>MAX_DEVICES)delete d[ids.shift()];
     const body=JSON.stringify(d);
