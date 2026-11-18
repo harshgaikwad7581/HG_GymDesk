@@ -654,12 +654,35 @@ async function changePw(){
   $('#pw_o').value='';$('#pw_n').value='';cloudAuthUp();m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
 }
 const waBillTxt=i=>`Hi ${i.name}, this is ${S.settings.gym}. Your bill ${i.no}: ${PL[i.plan]} membership, ${fmtD(i.start)} to ${fmtD(i.end)}. Amount paid: ${money(i.total)} (${i.mode}). Please find the bill PDF attached. Thank you!`;
-function billWa(no,b){
+async function billWa(no,b){
   const i=S.invoices.find(x=>x.no==no);
-  if(NATIVE)return pdfBtn(b,()=>billDoc(i),'Bill-'+i.no+'.pdf',BRAND.name+' bill '+i.no,waBillTxt(i),'share');
-  try{savePdf(billDoc(i).done(),'Bill-'+i.no+'.pdf',true)}catch(e){toast('The PDF could not be made, but WhatsApp will open with the bill details.',6000)}
-  window.open(wa(i.phone,waBillTxt(i)),'_blank');
-  toast('Bill PDF saved. In WhatsApp, tap the paperclip, choose Document, and pick Bill-'+i.no+'.pdf from Downloads.',14000);
+  if(!i){toast('Bill not found. Please reopen the Bills section and try again.');return}
+  const name='Bill-'+i.no+'.pdf',title=BRAND.name+' bill '+i.no,text=waBillTxt(i);
+  const old=b.textContent;b.disabled=true;b.textContent='Preparing bill…';
+  try{
+    const bytes=billDoc(i).done();
+    if(NATIVE){
+      const f=await nat('Filesystem','writeFile',{path:name,data:bytesB64(bytes),directory:'CACHE'});
+      await nat('Share','share',{title,text,url:f.uri,dialogTitle:'Share bill and message'});
+      toast('Choose WhatsApp in the share sheet to send the bill PDF and message together.');
+      return;
+    }
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const file=new File([blob],name,{type:'application/pdf'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title,text});
+      return;
+    }
+    // Browsers without file sharing cannot attach a local PDF to a wa.me message.
+    // Open the prefilled chat and download the PDF separately for manual attachment.
+    const chat=window.open(wa(i.phone,text),'_blank');
+    savePdf(bytes,name,true);
+    toast((chat?'WhatsApp opened with the message. ':'Allow pop-ups to open WhatsApp. ')+'The PDF was downloaded separately. In WhatsApp, tap the attachment icon → Document → Downloads, select '+name+', then send.',18000);
+  }catch(e){
+    if(e&&e.name==='AbortError'){toast('Sharing cancelled. The bill was not sent.');return}
+    const msg=String((e&&e.message)||e||'error');
+    toast('Could not share the PDF and message ('+msg.slice(0,120)+'). Try Save PDF, then send it from WhatsApp.',12000);
+  }finally{b.disabled=false;b.textContent=old}
 }
 async function eraseAll(k,b,e){
   if(!b.dataset.c){b.dataset.c=1;b.dataset.t=b.textContent;b.textContent='This erases ALL data on every device. Tap again to confirm';return}
