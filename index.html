@@ -653,35 +653,30 @@ async function changePw(){
   const salt=b64(crypto.getRandomValues(new Uint8Array(16)));setAuth({user:a.user,salt,hash:await hash(n,salt),gym:a.gym});
   $('#pw_o').value='';$('#pw_n').value='';cloudAuthUp();m.textContent='Password changed.'}catch(x){m.textContent='Couldn’t change the password in this browser.'}
 }
-const waBillTxt=i=>`Hi ${i.name}, this is ${S.settings.gym}. Your bill ${i.no}: ${PL[i.plan]} membership, ${fmtD(i.start)} to ${fmtD(i.end)}. Amount paid: ${money(i.total)} (${i.mode}). Please find the bill PDF attached. Thank you!`;
-async function billWa(no,b){
+const waBillTxt=i=>`Welcome to ${S.settings.gym}, ${i.name}! Your gym membership has been successfully registered.\n\nMembership: ${PL[i.plan]}\nValid from: ${fmtD(i.start)} to ${fmtD(i.end)}\nBill number: ${i.no}\nAmount paid: ${money(i.total)} (${i.mode})\n\nYour bill PDF is being shared separately. Thank you for joining us!`;
+function billWa(no,b){
   const i=S.invoices.find(x=>x.no==no);
   if(!i){toast('Bill not found. Please reopen the Bills section and try again.');return}
-  const name='Bill-'+i.no+'.pdf',title=BRAND.name+' bill '+i.no,text=waBillTxt(i);
+  const digits=String(i.phone||'').replace(/\D/g,'');
+  if(!digits){toast('This bill has no member phone number. Edit the member details and try again.');return}
+  const recipient=digits.length===10?String(S.settings.cc||'91')+digits:(digits.length===11&&digits.startsWith('0')?String(S.settings.cc||'91')+digits.slice(1):digits);
+  if(recipient.length<11){toast('Please check the member WhatsApp number in the bill. Include the country code if needed.');return}
+  const name='Bill-'+i.no+'.pdf',text=waBillTxt(i),url='https://wa.me/'+recipient+'?text='+encodeURIComponent(text);
   const old=b.textContent;b.disabled=true;b.textContent='Preparing bill…';
   try{
+    // Open the exact member chat directly. Keep this synchronous in the click
+    // handler so mobile browsers do not treat it as an unsolicited popup.
+    const chat=window.open(url,'_blank');
     const bytes=billDoc(i).done();
-    if(NATIVE){
-      const f=await nat('Filesystem','writeFile',{path:name,data:bytesB64(bytes),directory:'CACHE'});
-      await nat('Share','share',{title,text,url:f.uri,dialogTitle:'Share bill and message'});
-      toast('Choose WhatsApp in the share sheet to send the bill PDF and message together.');
-      return;
-    }
-    const blob=new Blob([bytes],{type:'application/pdf'});
-    const file=new File([blob],name,{type:'application/pdf'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title,text});
-      return;
-    }
-    // Browsers without file sharing cannot attach a local PDF to a wa.me message.
-    // Open the prefilled chat and download the PDF separately for manual attachment.
-    const chat=window.open(wa(i.phone,text),'_blank');
     savePdf(bytes,name,true);
-    toast((chat?'WhatsApp opened with the message. ':'Allow pop-ups to open WhatsApp. ')+'The PDF was downloaded separately. In WhatsApp, tap the attachment icon → Document → Downloads, select '+name+', then send.',18000);
+    if(!chat){
+      // If pop-ups are blocked, navigate this tab to the member's WhatsApp chat.
+      window.location.href=url;
+    }
+    toast('WhatsApp opened for '+recipient+' with the joining message prefilled. Tap Send in WhatsApp. Then tap the attachment icon → Document → Downloads, select '+name+', and send the PDF.',20000);
   }catch(e){
-    if(e&&e.name==='AbortError'){toast('Sharing cancelled. The bill was not sent.');return}
     const msg=String((e&&e.message)||e||'error');
-    toast('Could not share the PDF and message ('+msg.slice(0,120)+'). Try Save PDF, then send it from WhatsApp.',12000);
+    toast('Could not prepare the bill PDF ('+msg.slice(0,120)+'). Try Save PDF, then open WhatsApp for this member.',12000);
   }finally{b.disabled=false;b.textContent=old}
 }
 async function eraseAll(k,b,e){
